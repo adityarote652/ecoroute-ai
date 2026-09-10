@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoRoute AI - Predictive Waste Collection & Route Optimization</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        },
+                        accent: {
+                            50: '#ecfeff',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            700: '#0e7490',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(229, 231, 235, 0.8);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.8);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Map custom pulsing markers */
+        .marker-pulse-red {
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            animation: pulse-red 1.5s infinite;
+        }
+        @keyframes pulse-red {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- NAVIGATION BAR -->
+    <header class="sticky top-0 z-40 w-full glass-panel border-b border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                
+                <!-- Logo -->
+                <div class="flex items-center gap-3 cursor-pointer" onclick="switchView('landing')">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+                        <i class="fa-solid fa-recycle text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">EcoRoute <span class="text-slate-900 dark:text-white">AI</span></span>
+                        <span class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Smart Municipal Waste Platform</span>
+                    </div>
+                </div>
+
+                <!-- Navigation Links -->
+                <nav class="hidden md:flex items-center space-x-1" id="desktopNav">
+                    <button onclick="switchView('landing')" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 active-nav">
+                        <i class="fa-solid fa-house mr-1.5 text-emerald-600"></i>Home
+                    </button>
+                    <button onclick="requireRoleView('admin')" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+                        <i class="fa-solid fa-sliders mr-1.5 text-indigo-500"></i>Admin Hub
+                    </button>
+                    <button onclick="requireRoleView('municipal')" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+                        <i class="fa-solid fa-chart-line mr-1.5 text-teal-500"></i>Municipal Dashboard
+                    </button>
+                    <button onclick="requireRoleView('citizen')" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+                        <i class="fa-solid fa-user-shield mr-1.5 text-amber-500"></i>Citizen Hub
+                    </button>
+                </nav>
+
+                <!-- Right Side Actions & Auth Badge -->
+                <div class="flex items-center space-x-3">
+                    
+                    <!-- Language selector demo -->
+                    <select id="langSelect" onchange="toggleLang(this.value)" class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg px-2 py-1.5 border border-slate-200 dark:border-slate-700 font-medium focus:outline-none">
+                        <option value="en">🌐 EN</option>
+                        <option value="hi">🌐 हिंदी</option>
+                        <option value="mr">🌐 मराठी</option>
+                    </select>
+
+                    <!-- Auth State Button -->
+                    <div id="authContainer">
+                        <button onclick="openLoginModal()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-md shadow-emerald-600/20 transition-all">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                            <span>Login / Portal</span>
+                        </button>
+                    </div>
+
+                    <!-- Mobile Menu Button -->
+                    <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Drawer -->
+        <div id="mobileMenu" class="hidden md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-2 pb-4 space-y-2">
+            <button onclick="switchView('landing'); toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-house text-emerald-600"></i> Home
+            </button>
+            <button onclick="requireRoleView('admin'); toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-indigo-500"></i> Administration Dashboard
+            </button>
+            <button onclick="requireRoleView('municipal'); toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-teal-500"></i> Municipal Dashboard
+            </button>
+            <button onclick="requireRoleView('citizen'); toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-user-shield text-amber-500"></i> Citizen Dashboard
+            </button>
+        </div>
+    </header>
+
+    <!-- AUTHENTICATION MODAL -->
+    <div id="loginModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative animate-in fade-in zoom-in duration-200">
+            <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-user-lock text-xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-slate-900 dark:text-white" id="authTitle">Sign In to EcoRoute AI</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Select your user role or enter credentials to access your portal</p>
+            </div>
+
+            <!-- Role Quick Selector Pills -->
+            <div class="grid grid-cols-3 gap-2 mb-6 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                <button type="button" onclick="setAuthRole('citizen')" id="roleBtn-citizen" class="role-tab text-xs font-semibold py-2 rounded-lg transition-all bg-white dark:bg-slate-700 text-emerald-600 shadow-sm">
+                    Citizen
+                </button>
+                <button type="button" onclick="setAuthRole('municipal')" id="roleBtn-municipal" class="role-tab text-xs font-semibold py-2 rounded-lg transition-all text-slate-600 dark:text-slate-400">
+                    Municipal
+                </button>
+                <button type="button" onclick="setAuthRole('admin')" id="roleBtn-admin" class="role-tab text-xs font-semibold py-2 rounded-lg transition-all text-slate-600 dark:text-slate-400">
+                    Admin
+                </button>
+            </div>
+
+            <!-- Login Form -->
+            <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Email / Username</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-3 top-3 text-slate-400 text-sm"></i>
+                        <input type="text" id="loginUsername" required class="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="user@ecoroute.gov">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-sm"></i>
+                        <input type="password" id="loginPassword" value="demo123" required class="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="••••••••">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs">
+                    <label class="flex items-center text-slate-600 dark:text-slate-400">
+                        <input type="checkbox" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 mr-2"> Remember session
+                    </label>
+                    <a href="#" class="text-emerald-600 font-semibold hover:underline">Forgot?</a>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 text-sm transition-all flex items-center justify-center gap-2">
+                    <span>Login to Dashboard</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <div class="relative my-6">
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200 dark:border-slate-800"></div></div>
+                <div class="relative flex justify-center text-xs uppercase"><span class="bg-white dark:bg-slate-900 px-2 text-slate-400 font-semibold">Or Quick Demo Login</span></div>
+            </div>
+
+            <!-- Quick Demo Bypass buttons -->
+            <div class="grid grid-cols-3 gap-2">
+                <button type="button" onclick="quickLogin('citizen')" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    👤 Citizen Demo
+                </button>
+                <button type="button" onclick="quickLogin('municipal')" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    🏛️ Municipal Demo
+                </button>
+                <button type="button" onclick="quickLogin('admin')" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    🛠️ Admin Demo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="flex-grow">
+
+        <!-- VIEW 0: HOME LANDING PAGE -->
+        <section id="view-landing" class="view-section">
+            
+            <!-- Hero Banner -->
+            <div class="relative overflow-hidden bg-gradient-to-b from-emerald-900 via-slate-900 to-slate-950 text-white py-20 lg:py-28 px-4 sm:px-6 lg:px-8">
+                <!-- Decorative background elements -->
+                <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#22c55e_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                <div class="absolute top-1/4 -left-20 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl"></div>
+                <div class="absolute bottom-1/4 -right-20 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl"></div>
+
+                <div class="max-w-7xl mx-auto relative z-10 text-center">
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 mb-6 backdrop-blur-md">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Sensorless Predictive AI Engine
+                    </span>
+                    
+                    <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight max-w-4xl mx-auto leading-tight">
+                        Predictive Waste Collection & <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">Garbage Truck Route Optimization</span>
+                    </h1>
+                    
+                    <p class="mt-6 text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
+                        Eliminate fixed pickup schedules. Predict bin overflow using historical waste rates, area priority, and citizen reports—reducing trips, fuel, traffic, and urban emissions.
+                    </p>
+
+                    <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
+                        <button onclick="quickLogin('municipal')" class="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-2xl shadow-xl shadow-emerald-500/30 transition-all flex items-center gap-3 text-base">
+                            <i class="fa-solid fa-route text-lg"></i>
+                            <span>Launch Route Optimization Engine</span>
+                        </button>
+                        <button onclick="quickLogin('citizen')" class="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-semibold rounded-2xl transition-all flex items-center gap-3 text-base">
+                            <i class="fa-solid fa-camera-retro text-amber-400"></i>
+                            <span>Report Overflow Bin</span>
+                        </button>
+                    </div>
+
+                    <!-- Formula Badge Bar -->
+                    <div class="mt-12 max-w-3xl mx-auto p-4 rounded-2xl bg-slate-800/80 border border-slate-700/60 backdrop-blur-md flex flex-wrap justify-around text-left text-xs gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">1</div>
+                            <div>
+                                <div class="text-slate-400 font-medium">Prediction Rule</div>
+                                <div class="font-mono text-emerald-300">Vol = Prev + (Rate × Days)</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">2</div>
+                            <div>
+                                <div class="text-slate-400 font-medium">Dispatch Trigger</div>
+                                <div class="font-mono text-amber-300">Fill Level ≥ 80%</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold">3</div>
+                            <div>
+                                <div class="text-slate-400 font-medium">Optimization Model</div>
+                                <div class="font-mono text-teal-300">Selective TSP / VRP Solver</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Impact Counters Bar -->
+            <div class="bg-slate-900 border-y border-slate-800 py-8 text-white">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                        <div class="p-4 rounded-2xl bg-slate-800/50 border border-slate-800">
+                            <i class="fa-solid fa-road text-emerald-400 text-2xl mb-2"></i>
+                            <div class="text-3xl font-extrabold text-emerald-400 font-mono" id="statDistance">1,482 km</div>
+                            <div class="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Total Distance Saved</div>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-slate-800/50 border border-slate-800">
+                            <i class="fa-solid fa-gas-pump text-teal-400 text-2xl mb-2"></i>
+                            <div class="text-3xl font-extrabold text-teal-400 font-mono" id="statFuel">592 L</div>
+                            <div class="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Fuel Conserved</div>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-slate-800/50 border border-slate-800">
+                            <i class="fa-solid fa-leaf text-green-400 text-2xl mb-2"></i>
+                            <div class="text-3xl font-extrabold text-green-400 font-mono" id="statCO2">1,586 kg</div>
+                            <div class="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">CO₂ Emissions Avoided</div>
+                        </div>
+                        <div class="p-4 rounded-2xl bg-slate-800/50 border border-slate-800">
+                            <i class="fa-solid fa-bolt text-amber-400 text-2xl mb-2"></i>
+                            <div class="text-3xl font-extrabold text-amber-400 font-mono" id="statBiogas">420 kWh</div>
+                            <div class="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Biogas Energy Generated</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- How It Works Flow Section -->
+            <div class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">End-to-End System Flow</h2>
+                    <p class="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">How EcoRoute AI Solves Urban Waste</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
+                    
+                    <!-- Step 1 -->
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 relative text-center shadow-sm">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl font-bold mx-auto mb-4">
+                            1
+                        </div>
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base mb-2">Bin Data Record</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Capacity, location coords, waste type, and last collection timestamp stored digitally.
+                        </p>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 relative text-center shadow-sm">
+                        <div class="w-12 h-12 rounded-xl bg-teal-100 dark:bg-teal-950 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xl font-bold mx-auto mb-4">
+                            2
+                        </div>
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base mb-2">Fill Prediction</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Algorithmic fill estimation based on historical generation rate & citizen overflow flags.
+                        </p>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 relative text-center shadow-sm">
+                        <div class="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl font-bold mx-auto mb-4">
+                            3
+                        </div>
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base mb-2">≥ 80% Filtering</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Filters out non-critical bins. Standard fixed trips visiting empty bins are eliminated.
+                        </p>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 relative text-center shadow-sm">
+                        <div class="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl font-bold mx-auto mb-4">
+                            4
+                        </div>
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base mb-2">Priority Ranking</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Ranks high-risk areas (markets, hospitals, bus stands) for urgent collection priority.
+                        </p>
+                    </div>
+
+                    <!-- Step 5 -->
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 relative text-center shadow-sm">
+                        <div class="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl font-bold mx-auto mb-4">
+                            5
+                        </div>
+                        <h4 class="font-bold text-slate-900 dark:text-white text-base mb-2">Route Solver</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Generates optimal vehicle tour respecting truck payload limits and distance constraints.
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Problem Statement Comparison Section -->
+            <div class="bg-slate-100 dark:bg-slate-800/50 py-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                        
+                        <div class="p-8 rounded-3xl bg-rose-500/10 border border-rose-500/20">
+                            <span class="inline-block px-3 py-1 rounded-md text-xs font-bold bg-rose-500 text-white mb-4">Traditional Method</span>
+                            <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-3">Fixed Collection Schedule</h3>
+                            <ul class="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                                <li class="flex items-start gap-2"><i class="fa-solid fa-circle-xmark text-rose-500 mt-1"></i> Trucks visit every bin regardless of fill level.</li>
+                                <li class="flex items-start gap-2"><i class="fa-solid fa-circle-xmark text-rose-500 mt-1"></i> Excessive fuel consumption and vehicle wear.</li>
+                                <li class="flex items-start gap-2"><i class="fa-solid fa-circle-xmark text-rose-500 mt-1"></i> Overflowing market bins remain unserviced between scheduled cycles.</li>
+                                <li class="flex items-start gap-2"><i class="fa-solid fa-circle-xmark text-rose-500 mt-1"></i> Heavy carbon footprint and traffic congestion.</li>
+                            </ul>
+                        </div>
+
+                        <div class="p-8 rounded-3xl bg-emerald-500/10 border border-emerald-500/20">
+                            <span class="inline-block px-3 py-1 rounded-md text-xs font-bold bg-emerald-600 text-white mb-4">EcoRoute AI Solution</span>
+                            <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-3">Predictive Selective Dispatch</h3>
+                            <ul class="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                                <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1"></i> Sensorless fill mathematical prediction engine.</li>
+                                <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1"></i> Reroute trucks ONLY to bins at or exceeding 80% threshold.</li>
+                                <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1"></i> Up to 45% reduction in total trip distance and diesel usage.</li>
+                                <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1"></i> Integrated citizen verification and green rewards wallet.</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Role Access Switcher Cards Section -->
+            <div class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white">Select Your Dashboard Portal</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Test all three user roles built directly into this prototype</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    
+                    <!-- Admin Card -->
+                    <div class="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-slate-200 dark:border-slate-700 shadow-xl flex flex-col justify-between hover:border-indigo-500 transition-all">
+                        <div>
+                            <div class="w-14 h-14 bg-indigo-100 dark:bg-indigo-950 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl mb-6">
+                                <i class="fa-solid fa-sliders"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">Administration Hub</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                                System-level control center. Manage bin registries, processing facilities, truck fleet capacities, driver shifts, audit logs, and prediction formula parameters.
+                            </p>
+                        </div>
+                        <button onclick="quickLogin('admin')" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+                            <span>Open Admin Hub</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Municipal Card -->
+                    <div class="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-slate-200 dark:border-slate-700 shadow-xl flex flex-col justify-between hover:border-teal-500 transition-all">
+                        <div>
+                            <div class="w-14 h-14 bg-teal-100 dark:bg-teal-950 text-teal-600 rounded-2xl flex items-center justify-center text-2xl mb-6">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">Municipal Dashboard</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                                Official city view with Leaflet interactive bin map, dynamic prediction calculation, selective 80%+ route solver, truck payload tracker, and carbon savings analytics.
+                            </p>
+                        </div>
+                        <button onclick="quickLogin('municipal')" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+                            <span>Open Municipal View</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Citizen Card -->
+                    <div class="bg-white dark:bg-slate-800 rounded-3xl p-8 border border-slate-200 dark:border-slate-700 shadow-xl flex flex-col justify-between hover:border-amber-500 transition-all">
+                        <div>
+                            <div class="w-14 h-14 bg-amber-100 dark:bg-amber-950 text-amber-600 rounded-2xl flex items-center justify-center text-2xl mb-6">
+                                <i class="fa-solid fa-user-shield"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">Citizen Dashboard</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                                Public portal to view nearby bin fill levels, submit photo overflow complaints, earn Green Points, claim tax discounts, and track live truck routes.
+                            </p>
+                        </div>
+                        <button onclick="quickLogin('citizen')" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+                            <span>Open Citizen Portal</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 1: ADMIN DASHBOARD -->
+        <section id="view-admin" class="view-section hidden p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+            
+            <!-- Header Bar -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-md text-xs font-extrabold bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">SYSTEM CONTROL</span>
+                        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Administration Dashboard</h2>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Configure bin database, fleet trucks, conversion metrics, and view system audit logs.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="openAddBinModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> Add New Bin
+                    </button>
+                    <button onclick="triggerBulkImport()" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-import"></i> Bulk CSV Upload
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grid Tabs for Admin Functions -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Bin Registry Table (2 Cols) -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-dumpster text-indigo-500"></i> Managed Bins Registry (<span id="adminBinCount">25</span>)
+                        </h3>
+                        <input type="text" id="adminBinSearch" oninput="filterAdminBinTable()" placeholder="Search Bin ID or ward..." class="text-xs px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase tracking-wider font-semibold sticky top-0">
+                                <tr>
+                                    <th class="p-3">ID / Location</th>
+                                    <th class="p-3">Capacity</th>
+                                    <th class="p-3">Type</th>
+                                    <th class="p-3">Daily Rate</th>
+                                    <th class="p-3">Last Collected</th>
+                                    <th class="p-3">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminBinTableBody" class="divide-y divide-slate-100 dark:divide-slate-800">
+                                <!-- Dynamic Bin Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- System Parameters & Thresholds (1 Col) -->
+                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-6">
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                        <i class="fa-solid fa-gears text-indigo-500"></i> System Thresholds & Formula Settings
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Collection Dispatch Trigger (%)</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="paramThreshold" min="50" max="95" value="80" oninput="updateParamThreshold(this.value)" class="w-full accent-indigo-600">
+                                <span class="font-bold text-indigo-600 font-mono text-sm" id="paramThresholdVal">80%</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">CO₂ Emission Factor (kg / L diesel)</label>
+                            <input type="number" step="0.1" id="paramCO2Factor" value="2.68" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Truck Average Fuel Consumption (L / 100km)</label>
+                            <input type="number" id="paramFuelRate" value="38" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Biogas Conversion (kWh / kg organic waste)</label>
+                            <input type="number" step="0.05" id="paramBiogasFactor" value="0.45" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono">
+                        </div>
+
+                        <button onclick="saveAdminParams()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all">
+                            Save System Settings
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Secondary Grid: Fleet Management & Audit Logs -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Truck Fleet Management -->
+                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-truck-front text-indigo-500"></i> Municipal Fleet & Drivers
+                        </h3>
+                        <button onclick="openAddTruckModal()" class="text-xs text-indigo-600 font-semibold hover:underline">+ Add Truck</button>
+                    </div>
+
+                    <div class="space-y-3" id="adminTruckList">
+                        <!-- Dynamic Truck List -->
+                    </div>
+                </div>
+
+                <!-- Audit Log -->
+                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-indigo-500"></i> Real-Time Audit Log
+                    </h3>
+                    <div class="space-y-3 max-h-64 overflow-y-auto text-xs pr-1" id="adminAuditLogs">
+                        <!-- Dynamic Audit Log Entries -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- VIEW 2: MUNICIPAL DASHBOARD -->
+        <section id="view-municipal" class="view-section hidden p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+            
+            <!-- Dashboard Title Header -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-md text-xs font-extrabold bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300">WARD OPERATIONAL HUB</span>
+                        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Municipal Collection & Optimization Hub</h2>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Live predicted fill monitoring, priority overflow ranking, selective route calculation, and environmental impact reporting.</p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="generateEcoRoute()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-route"></i> Generate Optimal Route
+                    </button>
+                    <button onclick="exportMunicipalReport()" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-2xl transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-file-pdf text-rose-500"></i> Export PDF Summary
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Ward Metrics Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <div class="text-xs font-semibold text-slate-500 uppercase">Total Ward Bins</div>
+                    <div class="text-2xl font-extrabold text-slate-900 dark:text-white mt-1" id="muniTotalBins">25</div>
+                    <div class="text-[10px] text-slate-400 mt-1">Monitored Ward 4</div>
+                </div>
+
+                <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/30">
+                    <div class="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase">≥80% Dispatch Needed</div>
+                    <div class="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-1" id="muniHighBins">9 Bins</div>
+                    <div class="text-[10px] text-rose-500 mt-1">Requires Collection</div>
+                </div>
+
+                <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/30">
+                    <div class="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase">50-79% Warning</div>
+                    <div class="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1" id="muniWarnBins">8 Bins</div>
+                    <div class="text-[10px] text-amber-500 mt-1">Monitor next cycle</div>
+                </div>
+
+                <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/30">
+                    <div class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase">&lt;50% Normal</div>
+                    <div class="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1" id="muniLowBins">8 Bins</div>
+                    <div class="text-[10px] text-emerald-500 mt-1">Skipped to save fuel</div>
+                </div>
+
+                <div class="p-4 bg-white dark:bg-slate-800 rounded-2xl border border-teal-200 dark:border-teal-900/50 bg-teal-50/30">
+                    <div class="text-xs font-semibold text-teal-600 dark:text-teal-400 uppercase">Active Truck Fleet</div>
+                    <div class="text-2xl font-extrabold text-teal-600 dark:text-teal-400 mt-1" id="muniTruckLoad">TR-01 (78%)</div>
+                    <div class="text-[10px] text-teal-500 mt-1">Cap: 4,000 Liters</div>
+                </div>
+            </div>
+
+            <!-- Main Interactive Map & Route Panel Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Leaflet Map Container (2 Cols) -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-map-location-dot text-teal-500"></i> Ward Bin Status & Route Simulator Map
+                        </h3>
+                        
+                        <!-- Filter Pills -->
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> &lt;50%</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> 50-79%</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> ≥80% (Pick)</span>
+                        </div>
+                    </div>
+
+                    <!-- Map Canvas Holder -->
+                    <div id="map-body" class="w-full h-[460px] rounded-2xl border border-slate-200 dark:border-slate-700 z-10 shadow-inner relative overflow-hidden bg-slate-50 dark:bg-slate-900"></div>
+
+                    <!-- Map Controls Footer -->
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div class="text-slate-500 dark:text-slate-400">
+                            Showing <span class="font-bold text-slate-900 dark:text-white" id="mapRouteBinCount">0</span> collection stops on current optimized route line.
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="resetSimulation()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-lg font-medium">Clear Route Lines</button>
+                            <button onclick="simulateAdvanceTime()" class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-lg font-medium hover:bg-indigo-100">Simulate +6h Waste</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Priority Collection List & Comparison (1 Col) -->
+                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between space-y-6">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation text-rose-500"></i> Priority Collection List (≥80%)
+                            </h3>
+                            <span class="text-xs font-mono text-slate-400">High Risk First</span>
+                        </div>
+
+                        <!-- Scrollable Priority List -->
+                        <div class="space-y-3 max-h-80 overflow-y-auto pr-1" id="muniPriorityList">
+                            <!-- Dynamic Priority Bins -->
+                        </div>
+                    </div>
+
+                    <!-- Route Savings Summary Card -->
+                    <div class="p-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 text-white border border-slate-800 space-y-3">
+                        <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-between">
+                            <span>Optimization Impact</span>
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <div class="text-slate-400">Fixed Tour Dist</div>
+                                <div class="font-mono font-bold text-slate-300" id="optFixedDist">38.4 km</div>
+                            </div>
+                            <div>
+                                <div class="text-slate-400">Selective Tour</div>
+                                <div class="font-mono font-bold text-emerald-400" id="optSelectDist">18.2 km</div>
+                            </div>
+                            <div>
+                                <div class="text-slate-400">Distance Saved</div>
+                                <div class="font-mono font-bold text-emerald-400" id="optDistSavings">52.6%</div>
+                            </div>
+                            <div>
+                                <div class="text-slate-400">Est CO₂ Saved</div>
+                                <div class="font-mono font-bold text-teal-400" id="optCO2Saved">20.6 kg</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Municipal Charts & Analytics Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Waste Category Breakdown Chart -->
+                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-teal-500"></i> Waste Category Breakdown
+                    </h3>
+                    <div class="h-64 relative flex items-center justify-center">
+                        <canvas id="chartWasteType"></canvas>
+                    </div>
+                </div>
+
+                <!-- Daily CO2 & Fuel Savings Trend Chart -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-emerald-500"></i> Weekly Carbon & Fuel Savings Comparison
+                    </h3>
+                    <div class="h-64 relative">
+                        <canvas id="chartSavingsTrend"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Citizen Complaint Management & Biogas Estimator -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Pending Complaints -->
+                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-comments text-amber-500"></i> Citizen Complaint Oversight
+                        </h3>
+                        <span class="text-xs px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full font-bold" id="complaintPendingCount">2 Pending</span>
+                    </div>
+
+                    <div class="space-y-3" id="muniComplaintList">
+                        <!-- Dynamic Complaints -->
+                    </div>
+                </div>
+
+                <!-- Circular Economy & Biogas Potential Estimator -->
+                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                        <i class="fa-solid fa-seedling text-emerald-500"></i> Circular Economy & Biogas Estimator
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                        Based on predicted organic waste collected from wet waste bins across the ward.
+                    </p>
+
+                    <div class="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Predicted Organic Waste Payload</span>
+                            <span class="font-mono font-bold text-emerald-600 text-sm" id="muniOrganicKg">1,840 kg</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Bio-CNG Yield Potential</span>
+                            <span class="font-mono font-bold text-teal-600 text-sm" id="muniBioCNG">128 m³</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Electricity Generation Potential</span>
+                            <span class="font-mono font-bold text-amber-600 text-sm" id="muniPowerKWh">828 kWh</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Landfill Diversion Rate</span>
+                            <span class="font-mono font-bold text-indigo-600 text-sm">68.4%</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                        <div class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Recommended Facility Zone</div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400">
+                            Zone B (East Ward Substation) recommended for new Anaerobic Digestion biogas hub based on shortest average transit distance.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- VIEW 3: CITIZEN DASHBOARD -->
+        <section id="view-citizen" class="view-section hidden p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+            
+            <!-- Header Bar -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center text-2xl font-bold">
+                        <i class="fa-solid fa-user-circle"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-2xl font-bold text-slate-900 dark:text-white" id="citizenName">Alex Johnson</h2>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Ward 4 Resident</span>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Report overflowing bins, track collection trucks, segregation guides, and earn Green Rewards!</p>
+                    </div>
+                </div>
+
+                <!-- Green Points Pill Card -->
+                <div class="flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-2xl shadow-md">
+                    <i class="fa-solid fa-coins text-amber-300 text-2xl"></i>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold tracking-wider opacity-90">Green Points Wallet</div>
+                        <div class="text-2xl font-extrabold font-mono" id="citizenPoints">450 PTS</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Citizen Main Hub Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Form to Report Overflowing/Damaged Bin (1 Col) -->
+                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-camera-retro text-amber-500"></i> Report Bin Issue
+                        </h3>
+                        <span class="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded-md">+50 PTS on Verification</span>
+                    </div>
+
+                    <form onsubmit="handleCitizenReportSubmit(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Select Nearest Bin</label>
+                            <select id="citizenBinSelect" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <!-- Dynamic Options -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Issue Category</label>
+                            <select id="citizenIssueType" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <option value="Overflowing Waste">Overflowing Waste</option>
+                                <option value="Damaged Bin Structure">Damaged Bin / Lid Broken</option>
+                                <option value="Foul Odor / Unhygienic">Severe Foul Odor / Pests</option>
+                                <option value="Unsegregated Dumping">Unsegregated Illegal Dumping</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Upload Photo Proof</label>
+                            <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-all" onclick="document.getElementById('citizenFile').click()">
+                                <i class="fa-solid fa-cloud-arrow-up text-amber-500 text-xl mb-1"></i>
+                                <div class="text-xs text-slate-600 dark:text-slate-400 font-medium" id="uploadText">Click to select photo or capture</div>
+                                <input type="file" id="citizenFile" accept="image/*" class="hidden" onchange="previewUpload(this)">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Additional Details</label>
+                            <textarea id="citizenNotes" rows="2" placeholder="e.g. Bin overflowing near Market Gate 2..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>Submit Citizen Report</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- My Reports Tracker & Map (2 Cols) -->
+                <div class="lg:col-span-2 space-y-6">
+                    
+                    <!-- Citizen Map View -->
+                    <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                                <i class="fa-solid fa-map-pin text-amber-500"></i> Nearby Bin Live Status Map
+                            </h3>
+                            <button onclick="triggerWhatsAppShortcut()" class="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-3 py-1 rounded-lg font-semibold flex items-center gap-1.5 hover:bg-emerald-200">
+                                <i class="fa-brands fa-whatsapp text-sm text-emerald-600"></i> WhatsApp Bot Reporting
+                            </button>
+                        </div>
+                        <div id="citizenMap" class="w-full h-[260px] rounded-2xl border border-slate-200 dark:border-slate-700 z-10 shadow-inner"></div>
+                    </div>
+
+                    <!-- My Submitted Reports Tracker -->
+                    <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <h3 class="font-bold text-slate-900 dark:text-white text-base mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-amber-500"></i> My Submitted Reports Status
+                        </h3>
+
+                        <div class="space-y-3" id="citizenMyReports">
+                            <!-- Dynamic Citizen Reports -->
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Gamification Rewards & Community Leaderboard -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- Rewards Catalog (2 Cols) -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                            <i class="fa-solid fa-gift text-emerald-500"></i> Redeem Green Rewards
+                        </h3>
+                        <span class="text-xs text-slate-500 dark:text-slate-400">Use Green Points earned from verified reports</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        
+                        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <div>
+                                <i class="fa-solid fa-file-invoice-dollar text-emerald-500 text-2xl mb-2"></i>
+                                <h4 class="font-bold text-slate-900 dark:text-white text-sm">10% Property Tax Discount</h4>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Municipal tax credit coupon for active ward citizens.</p>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                <span class="font-mono text-xs font-bold text-emerald-600">300 PTS</span>
+                                <button onclick="redeemReward('10% Property Tax Coupon', 300)" class="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700">Redeem</button>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <div>
+                                <i class="fa-solid fa-bus text-teal-500 text-2xl mb-2"></i>
+                                <h4 class="font-bold text-slate-900 dark:text-white text-sm">City Bus Pass Voucher</h4>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Free 3-day municipal transit pass voucher.</p>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                <span class="font-mono text-xs font-bold text-emerald-600">150 PTS</span>
+                                <button onclick="redeemReward('Free Bus Pass', 150)" class="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700">Redeem</button>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                            <div>
+                                <i class="fa-solid fa-seedling text-amber-500 text-2xl mb-2"></i>
+                                <h4 class="font-bold text-slate-900 dark:text-white text-sm">Organic Compost Bag</h4>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">5kg organic compost bag from biogas facility.</p>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                <span class="font-mono text-xs font-bold text-emerald-600">100 PTS</span>
+                                <button onclick="redeemReward('5kg Organic Compost', 100)" class="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700">Redeem</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Ward Cleanliness Leaderboard (1 Col) -->
+                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-trophy text-amber-500"></i> Ward Cleanliness Ranking
+                    </h3>
+
+                    <div class="space-y-3 text-xs">
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-amber-500 text-white font-bold flex items-center justify-center text-[10px]">1</span>
+                                <span class="font-bold text-slate-900 dark:text-white">Ward 4 (North Central)</span>
+                            </div>
+                            <span class="font-mono font-bold text-emerald-600">94.2 Score</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-[10px]">2</span>
+                                <span class="font-semibold text-slate-700 dark:text-slate-300">Ward 2 (Green Valley)</span>
+                            </div>
+                            <span class="font-mono font-bold text-emerald-600">88.5 Score</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-[10px]">3</span>
+                                <span class="font-semibold text-slate-700 dark:text-slate-300">Ward 7 (University Circle)</span>
+                            </div>
+                            <span class="font-mono font-bold text-emerald-600">82.1 Score</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Request Special Pickup Modal Trigger Banner -->
+            <div class="p-6 bg-gradient-to-r from-slate-900 to-slate-950 rounded-3xl border border-slate-800 text-white flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-truck-ramp-box"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base">Bulk / E-Waste Special Pickup Request</h4>
+                        <p class="text-xs text-slate-400">Need disposal for furniture, old electronics, or construction debris? Schedule a dedicated truck.</p>
+                    </div>
+                </div>
+                <button onclick="openSpecialPickupModal()" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl transition-all whitespace-nowrap">
+                    Request Special Pickup
+                </button>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- MODAL: Add Bin -->
+    <div id="addBinModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 relative">
+            <button onclick="closeAddBinModal()" class="absolute top-4 right-4 text-slate-400 p-2"><i class="fa-solid fa-xmark"></i></button>
+            <h3 class="text-xl font-bold mb-4">Register New Bin Location</h3>
+            <form onsubmit="handleCreateBin(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1">Bin Unique ID</label>
+                    <input type="text" id="newBinId" required placeholder="e.g. BIN-26" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Location Name / Landmark</label>
+                    <input type="text" id="newBinLocation" required placeholder="e.g. City Bus Terminal Stand 4" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-semibold mb-1">Capacity (Liters)</label>
+                        <input type="number" id="newBinCapacity" value="240" required class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1">Waste Category</label>
+                        <select id="newBinType" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl">
+                            <option value="Wet / Organic">Wet / Organic</option>
+                            <option value="Dry / Recyclable">Dry / Recyclable</option>
+                            <option value="E-Waste">E-Waste</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-semibold mb-1">Daily Rate (L/day)</label>
+                        <input type="number" id="newBinRate" value="45" required class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1">Area Risk Priority</label>
+                        <select id="newBinPriority" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl">
+                            <option value="Commercial Market">Commercial Market (High)</option>
+                            <option value="Hospital / Clinic">Hospital / Clinic (High)</option>
+                            <option value="Bus / Railway Station">Bus / Transit (High)</option>
+                            <option value="Residential Society">Residential (Normal)</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md mt-2">Save Bin to System</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Special Bulk Pickup Request -->
+    <div id="specialPickupModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 relative">
+            <button onclick="closeSpecialPickupModal()" class="absolute top-4 right-4 text-slate-400 p-2"><i class="fa-solid fa-xmark"></i></button>
+            <h3 class="text-xl font-bold mb-2">Request Special Pickup</h3>
+            <p class="text-xs text-slate-500 mb-4">A dedicated payload vehicle will be scheduled within 24 hours.</p>
+            <form onsubmit="handleSpecialPickupSubmit(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1">Pickup Waste Type</label>
+                    <select id="specType" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                        <option value="E-Waste & Electronics">E-Waste & Appliances</option>
+                        <option value="Construction Debris">Construction / Renovation Debris</option>
+                        <option value="Bulk Furniture / Garden">Bulk Furniture & Garden Waste</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Address / Pickup Coordinates</label>
+                    <input type="text" id="specAddr" required placeholder="Flat 402, Green Heights, Ward 4" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Preferred Pickup Date</label>
+                    <input type="date" id="specDate" required class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
+                </div>
+                <button type="submit" class="w-full py-3 bg-amber-500 text-slate-950 font-bold rounded-xl shadow-md">Schedule Special Pickup</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+                <span class="font-bold text-slate-800 dark:text-slate-200">EcoRoute AI Prototype</span> — Smart Municipal Waste Collection System
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="#" onclick="switchView('landing')" class="hover:underline">Home</a>
+                <a href="#" onclick="requireRoleView('admin')" class="hover:underline">Admin</a>
+                <a href="#" onclick="requireRoleView('municipal')" class="hover:underline">Municipal</a>
+                <a href="#" onclick="requireRoleView('citizen')" class="hover:underline">Citizen</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
