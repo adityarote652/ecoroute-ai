@@ -1,12 +1,12 @@
-// =============================================================
-// EcoRoute AI — Application Logic (app.js)  Phase 1
+﻿// =============================================================
+// EcoRoute AI â€” Application Logic (app.js)  Phase 1
 // PROTOTYPE: All predictions use rule-based simulation only.
 // =============================================================
 
 (function () {
   'use strict';
 
-  // ── SVG element helper ────────────────────────────────────
+  // â”€â”€ SVG element helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const svgEl = (tag, attrs = {}) => {
     const e = document.createElementNS(SVG_NS, tag);
@@ -14,10 +14,10 @@
     return e;
   };
 
-  // ── DOM shorthand ─────────────────────────────────────────
+  // â”€â”€ DOM shorthand â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const $ = id => document.getElementById(id);
 
-  // ── Application state ─────────────────────────────────────
+  // â”€â”€ Application state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Deep copy backup for deterministic resetting
   const initialBinsState = JSON.parse(JSON.stringify(ECO.BINS));
 
@@ -33,9 +33,9 @@
     ecoRoute: null,
   };
 
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // HELPERS
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function fillColor(pct) {
     if (pct >= 80) return 'var(--red)';
@@ -50,7 +50,7 @@
   }
 
   function overflowETA(hrs) {
-    if (hrs >= 99) return { label: '—', cls: '' };
+    if (hrs >= 99) return { label: 'â€”', cls: '' };
     if (hrs < 1)  return { label: `${Math.round(hrs * 60)} min`, cls: 'critical' };
     if (hrs < 3)  return { label: `${hrs.toFixed(1)} h`, cls: 'critical' };
     if (hrs < 8)  return { label: `${hrs.toFixed(1)} h`, cls: 'soon' };
@@ -70,9 +70,9 @@
     });
   }
 
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // COMPUTED METRICS
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function computeMetrics() {
     const active = state.bins.filter(b => !b.collected);
@@ -92,7 +92,7 @@
     };
   }
 
-  // ── Drawer Management ──────────────────────────────────────
+  // â”€â”€ Drawer Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function whyCollectNow(bin) {
     const parts = [];
     parts.push(`${bin.fillPercent}% full`);
@@ -159,9 +159,9 @@
 
 
 
-  // ══════════════════════════════════════════════════════════
-  // RENDER — 4 KPI Summary Cards
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // RENDER â€” 4 KPI Summary Cards
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function renderKPICards(distSaved, co2Saved) {
     const m = computeMetrics();
@@ -174,7 +174,7 @@
     
     // Biogas
     if ($('muniOrganicKg')) $('muniOrganicKg').innerText = `${Math.round(m.organicKg).toLocaleString()} kg`;
-    if ($('muniBioCNG')) $('muniBioCNG').innerText = `${Math.round(m.organicKg * 0.07).toLocaleString()} m³`;
+    if ($('muniBioCNG')) $('muniBioCNG').innerText = `${Math.round(m.organicKg * 0.07).toLocaleString()} mÂ³`;
     if ($('muniPowerKWh')) $('muniPowerKWh').innerText = `${Math.round(m.organicKg * state.cfg.biogasFactor).toLocaleString()} kWh`;
 
     // Route Savings
@@ -189,7 +189,7 @@
   }
 
 
-  // ── Route Calculation ──────────────────────────────────────
+  // â”€â”€ Route Calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function calculateRoute(binsToVisit) {
     let unvisited = [...binsToVisit];
     let currentPos = state.depot;
@@ -275,7 +275,7 @@
     let stepNum = 1;
     const seqHtml = state.ecoRoute.path.map((b) => {
       if (b.isDepotStop) {
-        return `<div class="flex items-center gap-2 py-1.5 px-2 text-xs text-blue-500 font-semibold"><span class="w-5 h-5 rounded bg-blue-100 flex items-center justify-center text-[9px] font-bold">D</span> Depot — Empty Truck</div>`;
+        return `<div class="flex items-center gap-2 py-1.5 px-2 text-xs text-blue-500 font-semibold"><span class="w-5 h-5 rounded bg-blue-100 flex items-center justify-center text-[9px] font-bold">D</span> Depot â€” Empty Truck</div>`;
       }
       const num = stepNum++;
       const pct = b.fillPercent;
@@ -294,7 +294,7 @@
       `;
     }).join('');
 
-    // Update DOM – use the new Tailwind containers (safe-null guards)
+    // Update DOM â€“ use the new Tailwind containers (safe-null guards)
     const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
     set('comp-fixed-bins', allActiveBins.length);
     set('comp-fixed-dist', fixedDist.toFixed(1) + ' km');
@@ -320,9 +320,9 @@
     renderMap();
   }
 
-  // ══════════════════════════════════════════════════════════
-  // RENDER — SVG City Map
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // RENDER â€” SVG City Map
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function renderMap() {
     const container = $('map-body');
@@ -330,7 +330,7 @@
 
     const W = 800, H = 520;
 
-    // ── Root SVG ──────────────────────────────────────────
+    // â”€â”€ Root SVG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const svg = svgEl('svg', {
       viewBox: `0 0 ${W} ${H}`,
       preserveAspectRatio: 'xMidYMid slice',
@@ -338,12 +338,12 @@
       'aria-label': 'City map showing bin locations for Ward 12, Pune',
     });
 
-    // ── Background ────────────────────────────────────────
+    // â”€â”€ Background â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const bgRect = svgEl('rect', { width: W, height: H, fill: '#e8f0f7' });
     bgRect.addEventListener('click', closeDrawer);
     svg.appendChild(bgRect);
 
-    // ── City block grid ───────────────────────────────────
+    // â”€â”€ City block grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Road grid (vertical x, horizontal y boundary positions)
     const vRoads = [0, 158, 316, 474, 632, W];
     const hRoads = [0, 106, 212, 318, 424, H];
@@ -358,10 +358,10 @@
     ];
 
     const ZONE_FILL = {
-      park: '#d4ecd9',   /* soft green — parks */
-      res:  '#dde8f4',   /* light slate-blue — residential */
-      com:  '#d0e2f0',   /* slightly deeper blue — commercial */
-      ind:  '#dce3e8',   /* cool grey — industrial */
+      park: '#d4ecd9',   /* soft green â€” parks */
+      res:  '#dde8f4',   /* light slate-blue â€” residential */
+      com:  '#d0e2f0',   /* slightly deeper blue â€” commercial */
+      ind:  '#dce3e8',   /* cool grey â€” industrial */
     };
 
     // Draw city blocks
@@ -405,7 +405,7 @@
       svg.appendChild(svgEl('line', { x1: 0, y1: y, x2: W, y2: y, ...roadLineAttr }));
     });
 
-    // ── Subtle grid texture overlay ───────────────────────
+    // â”€â”€ Subtle grid texture overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const defs = svgEl('defs');
     const gridPat = svgEl('pattern', {
       id: 'cityGrid', width: 40, height: 40,
@@ -424,7 +424,7 @@
       'pointer-events': 'none',
     }));
 
-    // ── Zone labels (very subtle) ──────────────────────────
+    // â”€â”€ Zone labels (very subtle) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const labels = [
       { x: 10, y: 95, text: 'PARK', col: '#1a3a1a' },
       { x: 474, y: 95, text: 'INDUSTRIAL', col: '#1a1e30' },
@@ -444,7 +444,7 @@
       svg.appendChild(t);
     });
 
-    // ── Routes (if active) ─────────────────────────────────
+    // â”€â”€ Routes (if active) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (state.routeActive && state.ecoRoute && state.baselineRoute) {
       // Helper to generate SVG path string
       const makePath = (seq) => {
@@ -468,7 +468,7 @@
       }));
     }
 
-    // ── Depot marker ──────────────────────────────────────
+    // â”€â”€ Depot marker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const { x: dx, y: dy } = state.depot;
     const dg = svgEl('g', { class: 'depot-marker', transform: `translate(${dx},${dy})` });
     // Diamond
@@ -492,7 +492,7 @@
     dg.appendChild(dl);
     svg.appendChild(dg);
 
-    // ── Bin markers ───────────────────────────────────────
+    // â”€â”€ Bin markers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     state.bins.forEach(bin => {
       if (bin.collected) return;
 
@@ -557,13 +557,13 @@
       // Tooltip title for accessibility
       const title = svgEl('title');
       title.textContent =
-        `${bin.name} (${bin.id}) · ${bin.fillPercent}% full · Overflow in ${overflowETA(bin.overflowHours).label}`;
+        `${bin.name} (${bin.id}) Â· ${bin.fillPercent}% full Â· Overflow in ${overflowETA(bin.overflowHours).label}`;
       g.appendChild(title);
 
       svg.appendChild(g);
     });
 
-    // ── Ward boundary label ───────────────────────────────
+    // â”€â”€ Ward boundary label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const wl = svgEl('text', {
       x: W - 8, y: H - 8,
       fill: '#1a2638',
@@ -573,23 +573,23 @@
       'font-family': 'system-ui, sans-serif',
       'text-anchor': 'end',
     });
-    wl.textContent = 'WARD 12 · PUNE  ⊡ PROTOTYPE';
+    wl.textContent = 'WARD 12 Â· PUNE  âŠ¡ PROTOTYPE';
     svg.appendChild(wl);
 
     container.innerHTML = '';
     container.appendChild(svg);
   }
 
-  // ══════════════════════════════════════════════════════════
-  // RENDER — Urgent Bin Panel (right)
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // RENDER â€” Urgent Bin Panel (right)
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-  // ── Waste-type chip colours ────────────────────────────────
+  // â”€â”€ Waste-type chip colours â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function wasteTypeColor(wt) {
     return { Organic:'#3fb950', Dry:'#58a6ff', Mixed:'#d29922', Hazardous:'#f85149' }[wt] || '#8b949e';
   }
 
-  // ── Relative time from ISO string to SIM_BASE ──────────────
+  // â”€â”€ Relative time from ISO string to SIM_BASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function relativeTime(isoStr) {
     const simBase = new Date(ECO.SIM_META.referenceTime);
     const hrs = Math.round((simBase - new Date(isoStr)) / 3_600_000);
@@ -602,7 +602,7 @@
     const list = $('muniPriorityList');
     if (!list) return;
 
-    // High-urgency first, then medium — both sorted by overflow ETA
+    // High-urgency first, then medium â€” both sorted by overflow ETA
     const priorityBins = state.bins
       .filter(b => !b.collected && (b.urgency === 'high' || b.urgency === 'medium'))
       .sort((a, b) => {
@@ -624,8 +624,8 @@
             <div class="flex items-center gap-3">
                 <span class="w-6 h-6 rounded-lg ${badgeClass} font-bold flex items-center justify-center font-mono text-[10px]">#${idx+1}</span>
                 <div>
-                    <div class="font-bold text-slate-900 dark:text-white">${bin.id} — ${bin.name}</div>
-                    <div class="text-[10px] text-slate-400">${bin.areaType} • ${bin.wasteType}</div>
+                    <div class="font-bold text-slate-900 dark:text-white">${bin.id} â€” ${bin.name}</div>
+                    <div class="text-[10px] text-slate-400">${bin.areaType} â€¢ ${bin.wasteType}</div>
                 </div>
             </div>
             <div class="text-right">
@@ -638,9 +638,9 @@
   }
 
 
-  // ══════════════════════════════════════════════════════════
-  // RENDER — Truck Capacity Strip (bottom)
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // RENDER â€” Truck Capacity Strip (bottom)
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function renderTruckStrip() {
     const strip = $('truck-strip');
@@ -654,7 +654,7 @@
       const statusCls = t.status.toLowerCase() === 'active' ? 'active' : 'standby';
       return `
         <div class="truck-card-strip">
-          <div class="truck-strip-icon">🚛</div>
+          <div class="truck-strip-icon">ðŸš›</div>
           <div class="truck-strip-info">
             <div class="truck-strip-name" style="color:${t.color}">${t.name}</div>
             <div class="truck-strip-id">${t.id}</div>
@@ -681,9 +681,9 @@
   }
 
 
-  // ══════════════════════════════════════════════════════════
-  // RENDER — Route Badge on sidebar nav item
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // RENDER â€” Route Badge on sidebar nav item
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function updateRouteBadge() {
     const badge = $('nav-badge-route');
@@ -695,9 +695,9 @@
     badge.classList.toggle('hidden', count === 0);
   }
 
-  // ══════════════════════════════════════════════════════════
-  // RENDER — Full Dashboard
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // RENDER â€” Full Dashboard
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function renderDashboard() {
     renderKPICards();
@@ -707,9 +707,9 @@
     updateRouteBadge();
   }
 
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // SIDEBAR TOGGLE
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function toggleSidebar() {
     state.sidebarCollapsed = !state.sidebarCollapsed;
@@ -722,9 +722,9 @@
 
 
 
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // SIMULATION ALERT TOAST
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   let _alertTimer = null;
   function showSimAlert(msg) {
@@ -748,9 +748,9 @@
   }
   window.showSimAlert = showSimAlert;
 
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // SIMULATION ENGINE CONTROLS
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function updateBinCalculations(bin) {
     const s = {
@@ -779,7 +779,7 @@
     candidate.fillPercent = Math.min(100, candidate.fillPercent + 30);
     updateBinCalculations(candidate);
 
-    showSimAlert(`🚨 Citizen Report: Overflow at ${candidate.name}! Urgency raised to High.`);
+    showSimAlert(`ðŸš¨ Citizen Report: Overflow at ${candidate.name}! Urgency raised to High.`);
     
     if (state.routeActive) generateEcoRoute();
     else if (state.activeView === 'dashboard') renderDashboard();
@@ -793,7 +793,7 @@
         updateBinCalculations(bin);
     });
 
-    showSimAlert(`⏳ Time advanced 6 hours. Bins updated according to generation rates.`);
+    showSimAlert(`â³ Time advanced 6 hours. Bins updated according to generation rates.`);
     
     if (state.routeActive) generateEcoRoute();
     else if (state.activeView === 'dashboard') renderDashboard();
@@ -805,7 +805,7 @@
     state.ecoRoute = null;
     state.baselineRoute = null;
     
-    showSimAlert(`🔄 Simulation reset to deterministic baseline.`);
+    showSimAlert(`ðŸ”„ Simulation reset to deterministic baseline.`);
     
     const rb = $('route-results');
     if (rb) rb.style.display = 'none';
@@ -821,25 +821,25 @@
     // 1. Reset & Start at Dashboard
     resetSimulation();
     switchView('dashboard');
-    showSimAlert('▶ Demo: Starting with 30 monitored bins in Ward 12...');
+    showSimAlert('â–¶ Demo: Starting with 30 monitored bins in Ward 12...');
     await new Promise(r => setTimeout(r, 3000));
     
     // 2. Switch to Route Planner & Generate
     switchView('route');
-    showSimAlert('▶ Demo: Generating efficient EcoRoute...');
+    showSimAlert('â–¶ Demo: Generating efficient EcoRoute...');
     await new Promise(r => setTimeout(r, 1000));
     generateEcoRoute();
     await new Promise(r => setTimeout(r, 4000));
 
     // 3. Citizen Report arrives
-    showSimAlert('▶ Demo: Simulating an incoming Citizen Overflow Report...');
+    showSimAlert('â–¶ Demo: Simulating an incoming Citizen Overflow Report...');
     await new Promise(r => setTimeout(r, 2000));
     simulateNewReport();
     await new Promise(r => setTimeout(r, 4000));
 
     // 4. Worker marks bin collected
     switchView('worker');
-    showSimAlert('▶ Demo: Switching to Worker View. Marking first bin as collected...');
+    showSimAlert('â–¶ Demo: Switching to Worker View. Marking first bin as collected...');
     await new Promise(r => setTimeout(r, 2000));
     
     // Select first collected button and click it
@@ -847,7 +847,7 @@
     if (firstBtn) firstBtn.click();
     
     await new Promise(r => setTimeout(r, 3000));
-    showSimAlert('✅ Demo Complete! All views and data flows are functional.');
+    showSimAlert('âœ… Demo Complete! All views and data flows are functional.');
   }
 
   function showSimAlert(msg) {
@@ -858,9 +858,9 @@
     setTimeout(() => el.classList.remove('show'), 5000);
   }
 
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // CITIZEN REPORT & WORKER VIEW
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function populateReportSelect() {
     const select = $('report-bin-select');
@@ -929,7 +929,7 @@
         html += `
           <div class="worker-bin-item" style="opacity: 0.7; padding: 10px;">
             <div class="worker-bin-info">
-              <div class="worker-bin-name" style="font-size: 12px;">♻ Return to Depot</div>
+              <div class="worker-bin-name" style="font-size: 12px;">â™» Return to Depot</div>
               <div class="worker-bin-meta">Empty truck payload</div>
             </div>
           </div>
@@ -946,9 +946,9 @@
         <div class="worker-bin-item ${isCol ? 'collected' : ''}">
           <div class="worker-bin-info">
             <div class="worker-bin-name">${realBin.name}</div>
-            <div class="worker-bin-meta">${realBin.id} · ${realBin.areaType} · ${realBin.weightKg} kg</div>
+            <div class="worker-bin-meta">${realBin.id} Â· ${realBin.areaType} Â· ${realBin.weightKg} kg</div>
           </div>
-          <button class="btn-collect" data-id="${realBin.id}">${isCol ? '✓ Collected' : 'Mark Collected'}</button>
+          <button class="btn-collect" data-id="${realBin.id}">${isCol ? 'âœ“ Collected' : 'Mark Collected'}</button>
         </div>
       `;
     });
@@ -1016,18 +1016,18 @@
     }
   }
 
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // LIVE CLOCK
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function updateClock() {
     const el = $('topbar-time');
     if (el) el.textContent = formatDateTime(new Date());
   }
 
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // EVENT LISTENERS
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function setupListeners() {
     // Sidebar toggle
@@ -1070,9 +1070,9 @@
     if (btnSimReset) btnSimReset.addEventListener('click', resetSimulation);
   }
 
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // INIT
-  // ══════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function switchViewInternal(view) {
       document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
@@ -1090,14 +1090,14 @@
     // Populate Citizen Select
     const cb = $('citizenBinSelect');
     if (cb) {
-        cb.innerHTML = state.bins.map(b => `<option value="${b.id}">${b.id} — ${b.name}</option>`).join('');
+        cb.innerHTML = state.bins.map(b => `<option value="${b.id}">${b.id} â€” ${b.name}</option>`).join('');
     }
 
     // Show landing view
     switchViewInternal('landing');
 
     console.log(
-      '%c EcoRoute AI %c Phase 1 · Prototype Simulation ',
+      '%c EcoRoute AI %c Phase 1 Â· Prototype Simulation ',
       'background:#3fb950;color:#0b0f17;font-weight:700;padding:2px 6px;border-radius:3px 0 0 3px',
       'background:#1c2230;color:#dce6f0;padding:2px 6px;border-radius:0 3px 3px 0'
     );
@@ -1116,7 +1116,7 @@
   window.switchView = function(view) {
       switchViewInternal(view);
   };
-  window.exportMunicipalReport = function() { alert("📄 Generating PDF..."); };
+  window.exportMunicipalReport = function() { alert("ðŸ“„ Generating PDF..."); };
   
   window.handleCitizenReportSubmit = function(e) {
       e.preventDefault();
@@ -1183,7 +1183,7 @@
       if (m) m.classList.toggle('hidden');
   };
   window.toggleLang = function(lang) {
-      // Placeholder — multilingual simulation
+      // Placeholder â€” multilingual simulation
       console.log('Language set to:', lang);
   };
   window.handleLoginSubmit = function(e) {
@@ -1196,3 +1196,178 @@
   };
 
 })();
+
+// =============================================================
+// LIVE MONITORING MAP â€” Leaflet.js (no API key required)
+// Initialised once; re-used on every switchView('municipal').
+// =============================================================
+(function initLiveMonitoringMap() {
+  'use strict';
+
+  const STATIONS = [
+    { name: 'Pune City Center',              lat: 18.5204, lon: 73.8567, status: 'High Risk',     color: '#ef4444' },
+    { name: 'Karvenagar / Cummins College',  lat: 18.4893, lon: 73.8202, status: 'Moderate Risk', color: '#f59e0b' },
+    { name: 'Hinjewadi IT Park',             lat: 18.5913, lon: 73.7389, status: 'High Risk',     color: '#ef4444' },
+    { name: 'Hadapsar',                      lat: 18.4966, lon: 73.9416, status: 'Low Risk',      color: '#10b981' },
+    { name: 'Kothrud',                       lat: 18.5074, lon: 73.8151, status: 'Moderate Risk', color: '#f59e0b' },
+  ];
+
+  let _map = null;
+
+  function buildMap() {
+    const container = document.getElementById('live-monitoring-map');
+    if (!container || typeof L === 'undefined') return;
+
+    // Avoid double-init if the map was already created
+    if (_map) { _map.invalidateSize(); return; }
+
+    _map = L.map('live-monitoring-map', {
+      center:  [18.5204, 73.8567],
+      zoom:    11,
+      scrollWheelZoom: false,
+    });
+
+    // OpenStreetMap tiles â€” completely free, no API key
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'Â© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(_map);
+
+    STATIONS.forEach(function(s) {
+      // Coloured circle marker
+      const marker = L.circleMarker([s.lat, s.lon], {
+        radius:      11,
+        fillColor:   s.color,
+        color:       '#fff',
+        weight:      2.5,
+        opacity:     1,
+        fillOpacity: 0.9,
+      }).addTo(_map);
+
+      // Popup with name + risk status
+      marker.bindPopup(
+        '<div style="font-family:Inter,sans-serif;min-width:160px;">' +
+          '<div style="font-weight:700;font-size:13px;color:#0f172a;margin-bottom:4px;">' + s.name + '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+            '<span style="width:10px;height:10px;border-radius:50%;background:' + s.color + ';display:inline-block;flex-shrink:0;"></span>' +
+            '<span style="font-size:12px;font-weight:600;color:' + s.color + ';">' + s.status + '</span>' +
+          '</div>' +
+        '</div>',
+        { maxWidth: 220, className: 'eco-popup' }
+      );
+
+      // Open popup on hover as well as click
+      marker.on('mouseover', function() { this.openPopup(); });
+    });
+  }
+
+  // Build immediately if DOM is ready, then also whenever switchView is called
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', buildMap);
+  } else {
+    buildMap();
+  }
+
+  // Patch window.switchView so the map invalidates size every time
+  // the municipal view becomes visible (Leaflet needs this after hiddenâ†’visible)
+  const _origSwitch = window.switchView;
+  window.switchView = function(view) {
+    if (_origSwitch) _origSwitch(view);
+    if (view === 'municipal') {
+      setTimeout(function() {
+        buildMap();
+        if (_map) _map.invalidateSize();
+      }, 80);
+    }
+  };
+
+  // Also expose a manual trigger for the quick-login path
+  window.invalidateLiveMap = function() {
+    if (_map) { setTimeout(function() { _map.invalidateSize(); }, 80); }
+  };
+}());
+
+// =============================================================
+// LIVE MONITORING MAP — Leaflet.js (no API key required)
+// Initialised once; re-used on every switchView('municipal').
+// =============================================================
+(function initLiveMonitoringMap() {
+  'use strict';
+
+  const STATIONS = [
+    { name: 'Pune City Center',              lat: 18.5204, lon: 73.8567, status: 'High Risk',     color: '#ef4444' },
+    { name: 'Karvenagar / Cummins College',  lat: 18.4893, lon: 73.8202, status: 'Moderate Risk', color: '#f59e0b' },
+    { name: 'Hinjewadi IT Park',             lat: 18.5913, lon: 73.7389, status: 'High Risk',     color: '#ef4444' },
+    { name: 'Hadapsar',                      lat: 18.4966, lon: 73.9416, status: 'Low Risk',      color: '#10b981' },
+    { name: 'Kothrud',                       lat: 18.5074, lon: 73.8151, status: 'Moderate Risk', color: '#f59e0b' },
+  ];
+
+  let _map = null;
+
+  function buildMap() {
+    const container = document.getElementById('live-monitoring-map');
+    if (!container || typeof L === 'undefined') return;
+
+    // Avoid double-init if the map was already created
+    if (_map) { _map.invalidateSize(); return; }
+
+    _map = L.map('live-monitoring-map', {
+      center:  [18.5204, 73.8567],
+      zoom:    11,
+      scrollWheelZoom: false,
+    });
+
+    // OpenStreetMap tiles — completely free, no API key
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(_map);
+
+    STATIONS.forEach(function(s) {
+      // Coloured circle marker
+      const marker = L.circleMarker([s.lat, s.lon], {
+        radius:      11,
+        fillColor:   s.color,
+        color:       '#fff',
+        weight:      2.5,
+        opacity:     1,
+        fillOpacity: 0.9,
+      }).addTo(_map);
+
+      // Popup with name + risk status
+      marker.bindPopup(
+        '<div style="font-family:Inter,sans-serif;min-width:160px;">' +
+          '<div style="font-weight:700;font-size:13px;color:#0f172a;margin-bottom:4px;">' + s.name + '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+            '<span style="width:10px;height:10px;border-radius:50%;background:' + s.color + ';display:inline-block;flex-shrink:0;"></span>' +
+            '<span style="font-size:12px;font-weight:600;color:' + s.color + ';">' + s.status + '</span>' +
+          '</div>' +
+        '</div>',
+        { maxWidth: 220, className: 'eco-popup' }
+      );
+
+      // Open popup on hover as well as click
+      marker.on('mouseover', function() { this.openPopup(); });
+    });
+  }
+
+  // Build immediately if DOM is ready, then also whenever switchView is called
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', buildMap);
+  } else {
+    buildMap();
+  }
+
+  // Patch window.switchView so the map invalidates size every time
+  // the municipal view becomes visible (Leaflet needs this after hidden→visible)
+  const _origSwitch = window.switchView;
+  window.switchView = function(view) {
+    if (_origSwitch) _origSwitch(view);
+    if (view === 'municipal') {
+      setTimeout(function() {
+        buildMap();
+        if (_map) _map.invalidateSize();
+      }, 80);
+    }
+  };
+}());
