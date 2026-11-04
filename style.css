@@ -1,4 +1,4 @@
-﻿/* =============================================================
+/* =============================================================
    EcoRoute AI - Stylesheet (style.css)
    Tailwind-first: keep only SVG map rules + design tokens.
    Tailwind CDN handles all layout, typography, colours.
@@ -57,15 +57,18 @@ body::after {
   animation: faint-pulse 8s ease-in-out infinite;
 }
 
-/* SVG MAP CANVAS */
+/* MAP CANVAS / Leaflet container */
 #map-body {
   position: relative;
   overflow: hidden;
+  min-height: 400px;
 }
-#map-body svg {
-  display: block;
-  width: 100%;
-  height: 100%;
+
+/* Fix Tailwind CSS stretching Leaflet's default attribution SVG flag */
+.leaflet-control-attribution svg {
+  width: 12px !important;
+  height: 8px !important;
+  display: inline-block !important;
 }
 
 /* Bin marker hover + selected */

@@ -1,8 +1,21 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+
+// ── Inject attribution SVG sizing rule to avoid Tailwind stretching ────────
+if (typeof document !== 'undefined') {
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    .leaflet-control-attribution svg {
+      width: 12px !important;
+      height: 8px !important;
+      display: inline-block !important;
+    }
+  `;
+  document.head.appendChild(styleEl);
+}
 
 // ── Helper: create a plain CSS circle divIcon (no external images) ─────────
 function makeDivIcon(color) {
@@ -34,21 +47,41 @@ const BINS = [
   { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fill: '50-79%',  label: 'Warning',   icon: orangeIcon },
 ];
 
+let _mapInstance = null;
+
+// Ensure leaflet recalculates dimensions immediately to avoid gray tiles
+function MapResizer() {
+  const map = useMap();
+  React.useEffect(() => {
+    _mapInstance = map;
+    map.invalidateSize();
+    const t1 = setTimeout(() => map.invalidateSize(), 100);
+    const t2 = setTimeout(() => map.invalidateSize(), 400);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [map]);
+  return null;
+}
+
 export function EcoRouteMap() {
   return (
     <MapContainer
       center={[18.5204, 73.8567]}
       zoom={11}
-      style={{ height: '100%', width: '100%' }}
+      style={{ height: '400px', width: '100%' }}
     >
-      {/* Fix 1: Free OpenStreetMap tiles — no API key required */}
+      <MapResizer />
+
+      {/* Free OpenStreetMap tiles */}
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution="&copy; OpenStreetMap contributors"
         maxZoom={19}
       />
 
-      {/* Fix 2 & 3: HTML divIcon markers, color-coded by fill level */}
+      {/* HTML divIcon markers, color-coded by fill level */}
       {BINS.map(bin => (
         <Marker key={bin.id} position={bin.pos} icon={bin.icon}>
           <Popup>
@@ -72,10 +105,14 @@ export function EcoRouteMap() {
 
 export function mountMap() {
   const rootEl = document.getElementById('map-body');
-  if (rootEl && !rootEl._reactRoot) {
-    const root = createRoot(rootEl);
-    root.render(<EcoRouteMap />);
-    rootEl._reactRoot = root;
+  if (rootEl) {
+    if (!rootEl._reactRoot) {
+      const root = createRoot(rootEl);
+      root.render(<EcoRouteMap />);
+      rootEl._reactRoot = root;
+    } else if (_mapInstance) {
+      setTimeout(() => _mapInstance.invalidateSize(), 50);
+    }
   }
 }
 
