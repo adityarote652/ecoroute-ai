@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -47,12 +47,18 @@ const BINS = [
   { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fill: '50-79%',  label: 'Warning',   icon: orangeIcon },
 ];
 
+// Critical / Red bins route coordinates
+const CRITICAL_ROUTE = [
+  [18.5204, 73.8567], // Pune City Center
+  [18.4966, 73.9416], // Hadapsar
+];
+
 let _mapInstance = null;
 
 // Ensure leaflet recalculates dimensions immediately to avoid gray tiles
 function MapResizer() {
   const map = useMap();
-  React.useEffect(() => {
+  useEffect(() => {
     _mapInstance = map;
     map.invalidateSize();
     const t1 = setTimeout(() => map.invalidateSize(), 100);
@@ -66,6 +72,34 @@ function MapResizer() {
 }
 
 export function EcoRouteMap() {
+  const [showRoute, setShowRoute] = useState(false);
+
+  useEffect(() => {
+    // Expose setter globally for app.js and button interactions
+    window.setMapShowRoute = (val) => setShowRoute(val);
+
+    const handleShowRoute = () => setShowRoute(true);
+    const handleClearRoute = () => setShowRoute(false);
+
+    window.addEventListener('ecoroute:show', handleShowRoute);
+    window.addEventListener('ecoroute:clear', handleClearRoute);
+
+    // Attach listeners directly to buttons in the DOM
+    const genButtons = document.querySelectorAll('button[onclick*="generateEcoRoute"]');
+    const clearButtons = document.querySelectorAll('button[onclick*="resetSimulation"]');
+
+    genButtons.forEach((btn) => btn.addEventListener('click', handleShowRoute));
+    clearButtons.forEach((btn) => btn.addEventListener('click', handleClearRoute));
+
+    return () => {
+      window.removeEventListener('ecoroute:show', handleShowRoute);
+      window.removeEventListener('ecoroute:clear', handleClearRoute);
+      genButtons.forEach((btn) => btn.removeEventListener('click', handleShowRoute));
+      clearButtons.forEach((btn) => btn.removeEventListener('click', handleClearRoute));
+      delete window.setMapShowRoute;
+    };
+  }, []);
+
   return (
     <MapContainer
       center={[18.5204, 73.8567]}
@@ -81,8 +115,23 @@ export function EcoRouteMap() {
         maxZoom={19}
       />
 
+      {/* Polyline connecting critical/red bins when route is active */}
+      {showRoute && (
+        <Polyline
+          positions={CRITICAL_ROUTE}
+          color="blue"
+          dashArray="6, 6"
+          weight={3}
+          pathOptions={{
+            color: 'blue',
+            dashArray: '6, 6',
+            weight: 3,
+          }}
+        />
+      )}
+
       {/* HTML divIcon markers, color-coded by fill level */}
-      {BINS.map(bin => (
+      {BINS.map((bin) => (
         <Marker key={bin.id} position={bin.pos} icon={bin.icon}>
           <Popup>
             <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '150px' }}>

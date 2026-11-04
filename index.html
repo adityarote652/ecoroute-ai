@@ -631,7 +631,7 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <button onclick="generateEcoRoute()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2">
+                    <button onclick="generateEcoRoute(); if (window.setMapShowRoute) window.setMapShowRoute(true);" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2">
                         <i class="fa-solid fa-route"></i> Generate Optimal Route
                     </button>
                     <button onclick="exportMunicipalReport()" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-2xl transition-all flex items-center gap-2">
@@ -700,7 +700,7 @@
                             Showing <span class="font-bold text-slate-900 dark:text-white" id="mapRouteBinCount">0</span> collection stops on current optimized route line.
                         </div>
                         <div class="flex items-center gap-2">
-                            <button onclick="resetSimulation()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-lg font-medium">Clear Route Lines</button>
+                            <button onclick="resetSimulation(); if (window.setMapShowRoute) window.setMapShowRoute(false);" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-lg font-medium">Clear Route Lines</button>
                             <button onclick="simulateAdvanceTime()" class="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-lg font-medium hover:bg-indigo-100">Simulate +6h Waste</button>
                         </div>
                     </div>

@@ -1,4 +1,4 @@
-﻿// =============================================================
+// =============================================================
 // EcoRoute AI â€” Application Logic (app.js)  Phase 1
 // PROTOTYPE: All predictions use rule-based simulation only.
 // =============================================================
@@ -317,6 +317,7 @@
     
     // Update KPI cards to show exact savings
     renderKPICards(distSaved, co2Saved);
+    if (window.setMapShowRoute) window.setMapShowRoute(true);
     renderMap();
   }
 
@@ -558,6 +559,7 @@
     // Also reset any selected bin if the drawer was open
     if (state.selectedBinId) closeDrawer();
 
+    if (window.setMapShowRoute) window.setMapShowRoute(false);
     renderDashboard();
   }
 
