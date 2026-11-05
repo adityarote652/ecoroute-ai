@@ -39,12 +39,12 @@ const redIcon    = makeDivIcon('#ef4444');   // Critical  >= 80%
 const orangeIcon = makeDivIcon('#f97316');   // Warning   50-79%
 const greenIcon  = makeDivIcon('#22c55e');   // Normal    < 50%
 
-const BINS = [
-  { id: 1, name: 'Pune City Center',          pos: [18.5204, 73.8567], fill: '>=80%',   label: 'Critical',  icon: redIcon    },
-  { id: 2, name: 'Karvenagar / Cummins',       pos: [18.4893, 73.8202], fill: '50-79%',  label: 'Warning',   icon: orangeIcon },
-  { id: 3, name: 'Hinjewadi IT Park',          pos: [18.5913, 73.7389], fill: '<50%',    label: 'Normal',    icon: greenIcon  },
-  { id: 4, name: 'Hadapsar',                   pos: [18.4966, 73.9416], fill: '>=80%',   label: 'Critical',  icon: redIcon    },
-  { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fill: '50-79%',  label: 'Warning',   icon: orangeIcon },
+const INITIAL_BINS = [
+  { id: 1, name: 'Pune City Center',          pos: [18.5204, 73.8567], fillPct: 88, fill: '88% (≥80%)',   label: 'Critical',  icon: redIcon    },
+  { id: 2, name: 'Karvenagar / Cummins',       pos: [18.4893, 73.8202], fillPct: 62, fill: '62% (50-79%)',  label: 'Warning',   icon: orangeIcon },
+  { id: 3, name: 'Hinjewadi IT Park',          pos: [18.5913, 73.7389], fillPct: 35, fill: '35% (<50%)',    label: 'Normal',    icon: greenIcon  },
+  { id: 4, name: 'Hadapsar',                   pos: [18.4966, 73.9416], fillPct: 92, fill: '92% (≥80%)',   label: 'Critical',  icon: redIcon    },
+  { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fillPct: 68, fill: '68% (50-79%)',  label: 'Warning',   icon: orangeIcon },
 ];
 
 // Critical / Red bins route coordinates
@@ -74,6 +74,43 @@ function MapResizer({ onReady }) {
 
 export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   const [showRoute, setShowRoute] = useState(false);
+  const [binList, setBinList] = useState(INITIAL_BINS);
+
+  // React state logic: update bin fill percentages by +15% when simulation advances
+  useEffect(() => {
+    const handleSimulateWaste = () => {
+      setBinList((prev) =>
+        prev.map((b) => {
+          const nextPct = Math.min(100, b.fillPct + 15);
+          const label = nextPct >= 80 ? 'Critical' : nextPct >= 50 ? 'Warning' : 'Normal';
+          const icon = nextPct >= 80 ? redIcon : nextPct >= 50 ? orangeIcon : greenIcon;
+          return {
+            ...b,
+            fillPct: nextPct,
+            fill: `${nextPct}% (${label})`,
+            label,
+            icon,
+          };
+        })
+      );
+    };
+
+    const handleResetBins = () => {
+      setBinList(INITIAL_BINS);
+    };
+
+    window.addEventListener('ecoroute:advance-time', handleSimulateWaste);
+    window.addEventListener('ecoroute:reset', handleResetBins);
+
+    const simButtons = document.querySelectorAll('button[onclick*="simulateAdvanceTime"]');
+    simButtons.forEach((btn) => btn.addEventListener('click', handleSimulateWaste));
+
+    return () => {
+      window.removeEventListener('ecoroute:advance-time', handleSimulateWaste);
+      window.removeEventListener('ecoroute:reset', handleResetBins);
+      simButtons.forEach((btn) => btn.removeEventListener('click', handleSimulateWaste));
+    };
+  }, []);
 
   useEffect(() => {
     if (!allowRoute) return;
@@ -131,9 +168,9 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
         />
       )}
 
-      {/* HTML divIcon markers, color-coded by fill level */}
-      {BINS.map((bin) => (
-        <Marker key={bin.id} position={bin.pos} icon={bin.icon}>
+      {/* HTML divIcon markers, color-coded by fill level with interactive React state */}
+      {binList.map((bin) => (
+        <Marker key={`${bin.id}-${bin.fillPct}`} position={bin.pos} icon={bin.icon}>
           <Popup>
             <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '150px' }}>
               <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '4px' }}>

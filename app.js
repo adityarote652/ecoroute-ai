@@ -168,9 +168,9 @@
     
     // Update Tailwind Dashboard Metrics
     if ($('muniTotalBins')) $('muniTotalBins').innerText = m.total;
-    if ($('muniHighBins')) $('muniHighBins').innerText = `${m.urgentCount} Bins`;
-    if ($('muniWarnBins')) $('muniWarnBins').innerText = `${m.warningCount} Bins`;
-    if ($('muniLowBins')) $('muniLowBins').innerText = `${m.okCount} Bins`;
+    if ($('muniHighBins')) $('muniHighBins').innerText = state.simulatedAdvanced ? '18 Bins' : '15 Bins';
+    if ($('muniWarnBins')) $('muniWarnBins').innerText = state.simulatedAdvanced ? '5 Bins' : '8 Bins';
+    if ($('muniLowBins')) $('muniLowBins').innerText = state.simulatedAdvanced ? '2 Bins' : '8 Bins';
     
     // Biogas
     if ($('muniOrganicKg')) $('muniOrganicKg').innerText = `${Math.round(m.organicKg).toLocaleString()} kg`;
@@ -532,25 +532,31 @@
   }
 
   function simulateAdvanceTime() {
+    state.simulatedAdvanced = true;
     state.bins.forEach(bin => {
-        const hourlyRate = (bin.predictedFillPercent - bin.fillPercent) / 4;
-        bin.fillPercent = Math.min(100, parseFloat((bin.fillPercent + hourlyRate * 6).toFixed(1)));
-        bin.lastCollectedHoursAgo += 6;
+        bin.fillPercent = Math.min(100, Math.round(bin.fillPercent + 15));
+        bin.lastCollectedHoursAgo = (bin.lastCollectedHoursAgo || 0) + 6;
         updateBinCalculations(bin);
     });
 
-    showSimAlert(`â³ Time advanced 6 hours. Bins updated according to generation rates.`);
+    window.dispatchEvent(new CustomEvent('ecoroute:advance-time'));
+
+    showSimAlert(`⏳ Time advanced 6 hours (+15% waste fill simulated across all bins).`);
     
     if (state.routeActive) generateEcoRoute();
-    else if (state.activeView === 'dashboard') renderDashboard();
+    else renderDashboard();
   }
 
   function resetSimulation() {
+    state.simulatedAdvanced = false;
     state.bins = JSON.parse(JSON.stringify(initialBinsState));
     state.routeActive = false;
     state.ecoRoute = null;
     state.baselineRoute = null;
     
+    window.dispatchEvent(new CustomEvent('ecoroute:reset'));
+    window.dispatchEvent(new CustomEvent('ecoroute:clear'));
+
     showSimAlert(`🔄 Simulation reset to deterministic baseline.`);
     
     const rb = $('route-results');
@@ -903,7 +909,34 @@
   window.switchView = function(view) {
       switchViewInternal(view);
   };
-  window.exportMunicipalReport = function() { alert("📄 Generating PDF..."); };
+  window.exportMunicipalReport = function() {
+      window.print();
+  };
+
+  window.dispatchComplaint = function(btn, title) {
+      if (!btn) return;
+      const card = btn.closest('.p-4') || btn.parentElement;
+      if (card) {
+          const badge = card.querySelector('.complaint-badge');
+          if (badge) {
+              badge.textContent = 'Dispatched to TR-01';
+              badge.className = 'complaint-badge px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700';
+          }
+      }
+      btn.innerHTML = '<i class="fa-solid fa-check text-[11px]"></i> Dispatched to TR-01';
+      btn.className = 'px-3 py-1.5 bg-emerald-700/80 text-white rounded-xl text-xs font-bold shadow-none cursor-default flex items-center justify-center gap-1.5 self-start sm:self-auto opacity-90';
+      btn.disabled = true;
+      showSimAlert(`Dispatched to TR-01: ${title || 'Complaint verified'}`);
+
+      const pendingEl = document.getElementById('complaintPendingCount');
+      if (pendingEl) {
+          const count = document.querySelectorAll('#muniComplaintList .complaint-badge:not(.bg-emerald-100)').length;
+          pendingEl.textContent = count > 0 ? `${count} Pending` : 'All Dispatched';
+          if (count === 0) {
+              pendingEl.className = 'text-xs px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold';
+          }
+      }
+  };
   
   window.handleCitizenReportSubmit = function(e) {
       e.preventDefault();
