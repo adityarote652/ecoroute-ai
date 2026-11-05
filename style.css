@@ -57,11 +57,16 @@ body::after {
   animation: faint-pulse 8s ease-in-out infinite;
 }
 
-/* MAP CANVAS / Leaflet container */
+/* MAP CANVAS / Leaflet containers */
 #map-body {
   position: relative;
   overflow: hidden;
   min-height: 400px;
+}
+#citizenMap {
+  position: relative;
+  overflow: hidden;
+  min-height: 260px;
 }
 
 /* Fix Tailwind CSS stretching Leaflet's default attribution SVG flag */

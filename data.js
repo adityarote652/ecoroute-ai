@@ -1,8 +1,8 @@
 // ================================================================
-// EcoRoute AI — Simulated Dataset  (data.js)
-// Ward: Shivajinagar–Deccan area, Pune, Maharashtra, India
+// EcoRoute AI - Simulated Dataset  (data.js)
+// Ward: Shivajinagar-Deccan area, Pune, Maharashtra, India
 //
-// ⚠  PROTOTYPE SIMULATION — All data below is synthetic and
+// ⚠  PROTOTYPE SIMULATION - All data below is synthetic and
 //    deterministic. No real sensors, APIs, or municipal records
 //    are used. See window.ECO.SIM_META for full assumptions.
 // ================================================================
@@ -15,7 +15,7 @@ const SIM_BASE = new Date('2026-09-10T09:00:00+05:30');
 
 // ── Geographic bounds of the SVG viewport ────────────────────────
 // SVG is 800 × 560 px; maps to a ~2.2 km × 1.7 km patch of
-// Shivajinagar–Deccan, Pune (centre ≈ 18.5196°N, 73.8554°E).
+// Shivajinagar-Deccan, Pune (centre ≈ 18.5196°N, 73.8554°E).
 const GEO = {
   lonMin: 73.8444, lonMax: 73.8666,   // west edge → east edge
   latMax: 18.5281, latMin: 18.5111,   // north edge → south edge
@@ -71,11 +71,11 @@ function deriveStatus(fill) {
   return 'ok';
 }
 
-// Priority score: weighted composite, 0–100 (deterministic).
+// Priority score: weighted composite, 0-100 (deterministic).
 //   fill%     × 0.40  →  max 40 pts  (current fill pressure)
 //   reports   × 7     →  max 35 pts  (citizen-reported urgency, capped at 5)
 //   timeLeft  × 0.90  →  max ~21 pts (hours to overflow, inverted)
-//   areaBonus          →  3–30 pts   (area-type risk weight per ref1 weighting)
+//   areaBonus          →  3-30 pts   (area-type risk weight per ref1 weighting)
 //   Ref1 weights: Commercial Market +25, Hospital/Clinic +30, Residential +5, Park +3
 function derivePriorityScore(fill, reports, ovHrs, loc) {
   // Commercial ≈ Market; Industrial ≈ high-footfall transit hub
@@ -141,7 +141,7 @@ const TRUCKS_SEED = [
     capacityKg:    3500,
     currentLoadKg: 420,
     status:        'Active',
-    zone:          'Deccan–Karve Road',
+    zone:          'Deccan-Karve Road',
     color:         '#d2a8ff',
     assignedBins:  [],
   },
@@ -155,10 +155,10 @@ const TRUCKS_SEED = [
 //          · wasteType · dailyGenerationRate (kg/day)
 //
 // Waste types used:
-//   Organic   – food, garden, wet organic waste
-//   Dry       – paper, plastic, recyclables
-//   Mixed     – unsegregated residential/commercial waste
-//   Hazardous – chemicals, solvents, industrial residue
+//   Organic   - food, garden, wet organic waste
+//   Dry       - paper, plastic, recyclables
+//   Mixed     - unsegregated residential/commercial waste
+//   Hazardous - chemicals, solvents, industrial residue
 //
 // Daily generation rates are simulated from area type and bin
 // capacity; not sourced from real municipal records.
@@ -171,7 +171,7 @@ const BINS_SEED = [
   { id:'B04', name:'Mandai Market',              x:308, y:290, fill:91, cap:240, loc:'Commercial',  trend:'Rising',  reports:4, lastHrs:48, waste:'Mixed',     daily:145 },
   { id:'B05', name:'Senapati Bapat Road',        x:598, y:242, fill:85, cap:480, loc:'Commercial',  trend:'Rising',  reports:0, lastHrs:24, waste:'Dry',       daily:140 },
   { id:'B06', name:'FC Road Night Zone',         x:438, y:318, fill:97, cap:240, loc:'Commercial',  trend:'Rising',  reports:5, lastHrs:72, waste:'Organic',   daily:160 },
-  // ── WARNING / YELLOW  (fill 50–79 %) ────────────────────────
+  // ── WARNING / YELLOW  (fill 50-79 %) ────────────────────────
   { id:'B07', name:'Prabhat Road Colony',        x:132, y:258, fill:72, cap:120, loc:'Residential', trend:'Stable',  reports:0, lastHrs:36, waste:'Organic',   daily:32  },
   { id:'B08', name:'Law College Road',           x:158, y:368, fill:65, cap:120, loc:'Residential', trend:'Rising',  reports:1, lastHrs:24, waste:'Organic',   daily:28  },
   { id:'B09', name:'Westend Mall',               x:90,  y:192, fill:78, cap:480, loc:'Commercial',  trend:'Stable',  reports:0, lastHrs:30, waste:'Dry',       daily:120 },
@@ -253,7 +253,7 @@ const BINS = BINS_SEED.map(s => {
     overflowHours:  ovHrs,
     urgency,
     status,
-    priorityScore:  pscore,       // 0–100 weighted composite
+    priorityScore:  pscore,       // 0-100 weighted composite
     priorityReason: '',           // set below after object is built
     // ── State flag ───────────────────────────────────────────
     collected: false,
@@ -280,7 +280,7 @@ const SIMULATION_CONFIG = {
 // SIMULATION METADATA  (transparency + KPI card context)
 // ================================================================
 const SIM_META = {
-  wardName:          'Shivajinagar–Deccan Ward',
+  wardName:          'Shivajinagar-Deccan Ward',
   city:              'Pune, Maharashtra, India',
   referenceTime:     SIM_BASE.toISOString(),   // deterministic demo anchor
   binCount:          BINS.length,
@@ -290,7 +290,7 @@ const SIM_META = {
   urgentCount:       BINS.filter(b => b.urgency === 'high').length,
   warningCount:      BINS.filter(b => b.urgency === 'medium').length,
   okCount:           BINS.filter(b => b.urgency === 'low').length,
-  dataSource:        'Prototype simulation — synthetic deterministic data only',
+  dataSource:        'Prototype simulation - synthetic deterministic data only',
 };
 
 // ================================================================

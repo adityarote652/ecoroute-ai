@@ -1,12 +1,12 @@
 // =============================================================
-// EcoRoute AI â€” Application Logic (app.js)  Phase 1
+// EcoRoute AI - Application Logic (app.js)  Phase 1
 // PROTOTYPE: All predictions use rule-based simulation only.
 // =============================================================
 
 (function () {
   'use strict';
 
-  // â”€â”€ SVG element helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // -- SVG element helper ------------------------------------
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const svgEl = (tag, attrs = {}) => {
     const e = document.createElementNS(SVG_NS, tag);
@@ -14,10 +14,10 @@
     return e;
   };
 
-  // â”€â”€ DOM shorthand â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // -- DOM shorthand -----------------------------------------
   const $ = id => document.getElementById(id);
 
-  // â”€â”€ Application state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // -- Application state -------------------------------------
   // Deep copy backup for deterministic resetting
   const initialBinsState = JSON.parse(JSON.stringify(ECO.BINS));
 
@@ -50,7 +50,7 @@
   }
 
   function overflowETA(hrs) {
-    if (hrs >= 99) return { label: 'â€”', cls: '' };
+    if (hrs >= 99) return { label: '-', cls: '' };
     if (hrs < 1)  return { label: `${Math.round(hrs * 60)} min`, cls: 'critical' };
     if (hrs < 3)  return { label: `${hrs.toFixed(1)} h`, cls: 'critical' };
     if (hrs < 8)  return { label: `${hrs.toFixed(1)} h`, cls: 'soon' };
@@ -92,7 +92,7 @@
     };
   }
 
-  // â”€â”€ Drawer Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // -- Drawer Management --------------------------------------
   function whyCollectNow(bin) {
     const parts = [];
     parts.push(`${bin.fillPercent}% full`);
@@ -160,7 +160,7 @@
 
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // RENDER â€” 4 KPI Summary Cards
+  // RENDER - 4 KPI Summary Cards
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function renderKPICards(distSaved, co2Saved) {
@@ -189,7 +189,7 @@
   }
 
 
-  // â”€â”€ Route Calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // -- Route Calculation --------------------------------------
   function calculateRoute(binsToVisit) {
     let unvisited = [...binsToVisit];
     let currentPos = state.depot;
@@ -275,7 +275,7 @@
     let stepNum = 1;
     const seqHtml = state.ecoRoute.path.map((b) => {
       if (b.isDepotStop) {
-        return `<div class="flex items-center gap-2 py-1.5 px-2 text-xs text-blue-500 font-semibold"><span class="w-5 h-5 rounded bg-blue-100 flex items-center justify-center text-[9px] font-bold">D</span> Depot â€” Empty Truck</div>`;
+        return `<div class="flex items-center gap-2 py-1.5 px-2 text-xs text-blue-500 font-semibold"><span class="w-5 h-5 rounded bg-blue-100 flex items-center justify-center text-[9px] font-bold">D</span> Depot - Empty Truck</div>`;
       }
       const num = stepNum++;
       const pct = b.fillPercent;
@@ -294,7 +294,7 @@
       `;
     }).join('');
 
-    // Update DOM â€“ use the new Tailwind containers (safe-null guards)
+    // Update DOM - use the new Tailwind containers (safe-null guards)
     const set = (id, val) => { const el = $(id); if (el) el.textContent = val; };
     set('comp-fixed-bins', allActiveBins.length);
     set('comp-fixed-dist', fixedDist.toFixed(1) + ' km');
@@ -322,20 +322,20 @@
   }
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // RENDER â€” SVG City Map
+  // RENDER - SVG City Map
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function renderMap() { if (window.mountReactMap) window.mountReactMap(); }
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // RENDER â€” Urgent Bin Panel (right)
+  // RENDER - Urgent Bin Panel (right)
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-  // â”€â”€ Waste-type chip colours â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // -- Waste-type chip colours --------------------------------
   function wasteTypeColor(wt) {
     return { Organic:'#3fb950', Dry:'#58a6ff', Mixed:'#d29922', Hazardous:'#f85149' }[wt] || '#8b949e';
   }
 
-  // â”€â”€ Relative time from ISO string to SIM_BASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // -- Relative time from ISO string to SIM_BASE --------------
   function relativeTime(isoStr) {
     const simBase = new Date(ECO.SIM_META.referenceTime);
     const hrs = Math.round((simBase - new Date(isoStr)) / 3_600_000);
@@ -348,7 +348,7 @@
     const list = $('muniPriorityList');
     if (!list) return;
 
-    // High-urgency first, then medium â€” both sorted by overflow ETA
+    // High-urgency first, then medium - both sorted by overflow ETA
     const priorityBins = state.bins
       .filter(b => !b.collected && (b.urgency === 'high' || b.urgency === 'medium'))
       .sort((a, b) => {
@@ -370,8 +370,8 @@
             <div class="flex items-center gap-3">
                 <span class="w-6 h-6 rounded-lg ${badgeClass} font-bold flex items-center justify-center font-mono text-[10px]">#${idx+1}</span>
                 <div>
-                    <div class="font-bold text-slate-900 dark:text-white">${bin.id} â€” ${bin.name}</div>
-                    <div class="text-[10px] text-slate-400">${bin.areaType} â€¢ ${bin.wasteType}</div>
+                    <div class="font-bold text-slate-900 dark:text-white">${bin.id} - ${bin.name}</div>
+                    <div class="text-[10px] text-slate-400">${bin.areaType} • ${bin.wasteType}</div>
                 </div>
             </div>
             <div class="text-right">
@@ -385,7 +385,7 @@
 
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // RENDER â€” Truck Capacity Strip (bottom)
+  // RENDER - Truck Capacity Strip (bottom)
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function renderTruckStrip() {
@@ -428,7 +428,7 @@
 
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // RENDER â€” Route Badge on sidebar nav item
+  // RENDER - Route Badge on sidebar nav item
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function updateRouteBadge() {
@@ -442,7 +442,7 @@
   }
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // RENDER â€” Full Dashboard
+  // RENDER - Full Dashboard
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   function renderDashboard() {
@@ -525,7 +525,7 @@
     candidate.fillPercent = Math.min(100, candidate.fillPercent + 30);
     updateBinCalculations(candidate);
 
-    showSimAlert(`ðŸš¨ Citizen Report: Overflow at ${candidate.name}! Urgency raised to High.`);
+    showSimAlert(`🚨 Citizen Report: Overflow at ${candidate.name}! Urgency raised to High.`);
     
     if (state.routeActive) generateEcoRoute();
     else if (state.activeView === 'dashboard') renderDashboard();
@@ -551,7 +551,7 @@
     state.ecoRoute = null;
     state.baselineRoute = null;
     
-    showSimAlert(`ðŸ”„ Simulation reset to deterministic baseline.`);
+    showSimAlert(`🔄 Simulation reset to deterministic baseline.`);
     
     const rb = $('route-results');
     if (rb) rb.style.display = 'none';
@@ -568,25 +568,25 @@
     // 1. Reset & Start at Dashboard
     resetSimulation();
     switchView('dashboard');
-    showSimAlert('â–¶ Demo: Starting with 30 monitored bins in Ward 12...');
+    showSimAlert('▶ Demo: Starting with 30 monitored bins in Ward 12...');
     await new Promise(r => setTimeout(r, 3000));
     
     // 2. Switch to Route Planner & Generate
     switchView('route');
-    showSimAlert('â–¶ Demo: Generating efficient EcoRoute...');
+    showSimAlert('▶ Demo: Generating efficient EcoRoute...');
     await new Promise(r => setTimeout(r, 1000));
     generateEcoRoute();
     await new Promise(r => setTimeout(r, 4000));
 
     // 3. Citizen Report arrives
-    showSimAlert('â–¶ Demo: Simulating an incoming Citizen Overflow Report...');
+    showSimAlert('▶ Demo: Simulating an incoming Citizen Overflow Report...');
     await new Promise(r => setTimeout(r, 2000));
     simulateNewReport();
     await new Promise(r => setTimeout(r, 4000));
 
     // 4. Worker marks bin collected
     switchView('worker');
-    showSimAlert('â–¶ Demo: Switching to Worker View. Marking first bin as collected...');
+    showSimAlert('▶ Demo: Switching to Worker View. Marking first bin as collected...');
     await new Promise(r => setTimeout(r, 2000));
     
     // Select first collected button and click it
@@ -594,7 +594,7 @@
     if (firstBtn) firstBtn.click();
     
     await new Promise(r => setTimeout(r, 3000));
-    showSimAlert('âœ… Demo Complete! All views and data flows are functional.');
+    showSimAlert('✅ Demo Complete! All views and data flows are functional.');
   }
 
   function showSimAlert(msg) {
@@ -676,7 +676,7 @@
         html += `
           <div class="worker-bin-item" style="opacity: 0.7; padding: 10px;">
             <div class="worker-bin-info">
-              <div class="worker-bin-name" style="font-size: 12px;">â™» Return to Depot</div>
+              <div class="worker-bin-name" style="font-size: 12px;">♲ Return to Depot</div>
               <div class="worker-bin-meta">Empty truck payload</div>
             </div>
           </div>
@@ -693,9 +693,9 @@
         <div class="worker-bin-item ${isCol ? 'collected' : ''}">
           <div class="worker-bin-info">
             <div class="worker-bin-name">${realBin.name}</div>
-            <div class="worker-bin-meta">${realBin.id} Â· ${realBin.areaType} Â· ${realBin.weightKg} kg</div>
+            <div class="worker-bin-meta">${realBin.id} · ${realBin.areaType} · ${realBin.weightKg} kg</div>
           </div>
-          <button class="btn-collect" data-id="${realBin.id}">${isCol ? 'âœ“ Collected' : 'Mark Collected'}</button>
+          <button class="btn-collect" data-id="${realBin.id}">${isCol ? '✓ Collected' : 'Mark Collected'}</button>
         </div>
       `;
     });
@@ -837,14 +837,14 @@
     // Populate Citizen Select
     const cb = $('citizenBinSelect');
     if (cb) {
-        cb.innerHTML = state.bins.map(b => `<option value="${b.id}">${b.id} â€” ${b.name}</option>`).join('');
+        cb.innerHTML = state.bins.map(b => `<option value="${b.id}">${b.id} - ${b.name}</option>`).join('');
     }
 
     // Show landing view
     switchViewInternal('landing');
 
     console.log(
-      '%c EcoRoute AI %c Phase 1 Â· Prototype Simulation ',
+      '%c EcoRoute AI %c Phase 1 · Prototype Simulation ',
       'background:#3fb950;color:#0b0f17;font-weight:700;padding:2px 6px;border-radius:3px 0 0 3px',
       'background:#1c2230;color:#dce6f0;padding:2px 6px;border-radius:0 3px 3px 0'
     );
@@ -863,7 +863,7 @@
   window.switchView = function(view) {
       switchViewInternal(view);
   };
-  window.exportMunicipalReport = function() { alert("ðŸ“„ Generating PDF..."); };
+  window.exportMunicipalReport = function() { alert("📄 Generating PDF..."); };
   
   window.handleCitizenReportSubmit = function(e) {
       e.preventDefault();
@@ -876,6 +876,29 @@
           bin.priorityScore = Math.max(90, bin.priorityScore + 30);
           bin.fillPercent = Math.max(85, bin.fillPercent + 20);
           renderDashboard();
+
+          const reportsContainer = $('citizenMyReports');
+          if (reportsContainer) {
+              const ticketNum = Math.floor(105 + Math.random() * 20);
+              const card = document.createElement('div');
+              card.className = "p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4";
+              card.innerHTML = `
+                  <div class="space-y-1">
+                      <div class="flex flex-wrap items-center gap-2">
+                          <span class="text-xs font-bold text-slate-900 dark:text-white">Ticket #${ticketNum}</span>
+                          <span class="text-xs text-slate-600 dark:text-slate-400">${issue} at ${bin.name}</span>
+                      </div>
+                      <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                          <i class="fa-regular fa-calendar-check text-[10px]"></i> Just now
+                      </div>
+                  </div>
+                  <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex-shrink-0">
+                      Under Verification
+                  </span>
+              `;
+              reportsContainer.prepend(card);
+          }
+
           alert(`Simulation Event: Citizen reported ${bin.name} (${bin.id}).\nIts urgency was raised to HIGH.`);
           e.target.reset();
       }
@@ -907,6 +930,7 @@
       }
       
       if (role === 'municipal') renderDashboard();
+      if (role === 'citizen' && window.mountCitizenMap) window.mountCitizenMap();
   };
   window.logout = function() {
       window.switchView('landing');
@@ -930,7 +954,7 @@
       if (m) m.classList.toggle('hidden');
   };
   window.toggleLang = function(lang) {
-      // Placeholder â€” multilingual simulation
+      // Placeholder - multilingual simulation
       console.log('Language set to:', lang);
   };
   window.handleLoginSubmit = function(e) {
@@ -945,7 +969,7 @@
 })();
 
 // =============================================================
-// LIVE MONITORING MAP â€” Leaflet.js (no API key required)
+// LIVE MONITORING MAP - Leaflet.js (no API key required)
 // Initialised once; re-used on every switchView('municipal').
 // =============================================================
 (function initLiveMonitoringMap() {
@@ -974,9 +998,9 @@
       scrollWheelZoom: false,
     });
 
-    // OpenStreetMap tiles â€” completely free, no API key
+    // OpenStreetMap tiles - completely free, no API key
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'Â© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
     }).addTo(_map);
 
@@ -1016,14 +1040,20 @@
   }
 
   // Patch window.switchView so the map invalidates size every time
-  // the municipal view becomes visible (Leaflet needs this after hiddenâ†’visible)
+  // the municipal view becomes visible (Leaflet needs this after hidden->visible)
   const _origSwitch = window.switchView;
   window.switchView = function(view) {
     if (_origSwitch) _origSwitch(view);
     if (view === 'municipal') {
       setTimeout(function() {
+        if (window.mountReactMap) window.mountReactMap();
         buildMap();
         if (_map) _map.invalidateSize();
+      }, 80);
+    }
+    if (view === 'citizen') {
+      setTimeout(function() {
+        if (window.mountCitizenMap) window.mountCitizenMap();
       }, 80);
     }
   };

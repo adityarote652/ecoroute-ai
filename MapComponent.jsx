@@ -53,13 +53,14 @@ const CRITICAL_ROUTE = [
   [18.4966, 73.9416], // Hadapsar
 ];
 
-let _mapInstance = null;
+let _muniMapInstance = null;
+let _citizenMapInstance = null;
 
 // Ensure leaflet recalculates dimensions immediately to avoid gray tiles
-function MapResizer() {
+function MapResizer({ onReady }) {
   const map = useMap();
   useEffect(() => {
-    _mapInstance = map;
+    if (onReady) onReady(map);
     map.invalidateSize();
     const t1 = setTimeout(() => map.invalidateSize(), 100);
     const t2 = setTimeout(() => map.invalidateSize(), 400);
@@ -67,15 +68,16 @@ function MapResizer() {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [map]);
+  }, [map, onReady]);
   return null;
 }
 
-export function EcoRouteMap() {
+export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   const [showRoute, setShowRoute] = useState(false);
 
   useEffect(() => {
-    // Expose setter globally for app.js and button interactions
+    if (!allowRoute) return;
+
     window.setMapShowRoute = (val) => setShowRoute(val);
 
     const handleShowRoute = () => setShowRoute(true);
@@ -96,17 +98,16 @@ export function EcoRouteMap() {
       window.removeEventListener('ecoroute:clear', handleClearRoute);
       genButtons.forEach((btn) => btn.removeEventListener('click', handleShowRoute));
       clearButtons.forEach((btn) => btn.removeEventListener('click', handleClearRoute));
-      delete window.setMapShowRoute;
     };
-  }, []);
+  }, [allowRoute]);
 
   return (
     <MapContainer
       center={[18.5204, 73.8567]}
       zoom={11}
-      style={{ height: '400px', width: '100%' }}
+      style={{ height: height, minHeight: height, width: '100%' }}
     >
-      <MapResizer />
+      <MapResizer onReady={onMapReady} />
 
       {/* Free OpenStreetMap tiles */}
       <TileLayer
@@ -152,23 +153,47 @@ export function EcoRouteMap() {
   );
 }
 
+export const EcoRouteMap = PuneMap;
+
 export function mountMap() {
   const rootEl = document.getElementById('map-body');
   if (rootEl) {
     if (!rootEl._reactRoot) {
       const root = createRoot(rootEl);
-      root.render(<EcoRouteMap />);
+      root.render(<PuneMap height="400px" onMapReady={(m) => { _muniMapInstance = m; }} />);
       rootEl._reactRoot = root;
-    } else if (_mapInstance) {
-      setTimeout(() => _mapInstance.invalidateSize(), 50);
+    } else if (_muniMapInstance) {
+      setTimeout(() => _muniMapInstance.invalidateSize(), 50);
     }
   }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mountMap);
-} else {
+export function mountCitizenMap() {
+  const rootEl = document.getElementById('citizenMap');
+  if (rootEl) {
+    if (!rootEl._reactRoot) {
+      const root = createRoot(rootEl);
+      root.render(<PuneMap height="260px" allowRoute={false} onMapReady={(m) => { _citizenMapInstance = m; }} />);
+      rootEl._reactRoot = root;
+    } else if (_citizenMapInstance) {
+      setTimeout(() => _citizenMapInstance.invalidateSize(), 50);
+    }
+  }
+}
+
+export function mountAllMaps() {
   mountMap();
+  mountCitizenMap();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mountAllMaps);
+} else {
+  mountAllMaps();
 }
 
 window.mountReactMap = mountMap;
+window.mountCitizenMap = mountCitizenMap;
+window.mountAllMaps = mountAllMaps;
+window.PuneMap = PuneMap;
+window.EcoRouteMap = EcoRouteMap;

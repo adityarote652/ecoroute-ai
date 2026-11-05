@@ -265,7 +265,7 @@
                     </h1>
                     
                     <p class="mt-6 text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed">
-                        Eliminate fixed pickup schedules. Predict bin overflow using historical waste rates, area priority, and citizen reports—reducing trips, fuel, traffic, and urban emissions.
+                        Eliminate fixed pickup schedules. Predict bin overflow using historical waste rates, area priority, and citizen reports-reducing trips, fuel, traffic, and urban emissions.
                     </p>
 
                     <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
@@ -926,7 +926,7 @@
                                 <i class="fa-brands fa-whatsapp text-sm text-emerald-600"></i> WhatsApp Bot Reporting
                             </button>
                         </div>
-                        <div id="citizenMap" class="w-full h-[260px] rounded-2xl border border-slate-200 dark:border-slate-700 z-10 shadow-inner"></div>
+                        <div id="citizenMap" class="w-full h-[260px] min-h-[260px] rounded-2xl border border-slate-200 dark:border-slate-700 z-10 shadow-inner relative overflow-hidden bg-slate-50 dark:bg-slate-900" style="min-height: 260px;"></div>
                     </div>
 
                     <!-- My Submitted Reports Tracker -->
@@ -936,7 +936,37 @@
                         </h3>
 
                         <div class="space-y-3" id="citizenMyReports">
-                            <!-- Dynamic Citizen Reports -->
+                            <!-- Ticket #104 Card -->
+                            <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+                                <div class="space-y-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="text-xs font-bold text-slate-900 dark:text-white">Ticket #104</span>
+                                        <span class="text-xs text-slate-600 dark:text-slate-400">Overflowing Bin near Market Gate 2</span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                                        <i class="fa-regular fa-calendar-check text-[10px]"></i> Today, 10:30 AM
+                                    </div>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex-shrink-0">
+                                    Under Verification
+                                </span>
+                            </div>
+
+                            <!-- Ticket #089 Card -->
+                            <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+                                <div class="space-y-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="text-xs font-bold text-slate-900 dark:text-white">Ticket #089</span>
+                                        <span class="text-xs text-slate-600 dark:text-slate-400">Mixed Plastic Waste at Station Rd</span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                                        <i class="fa-regular fa-calendar-check text-[10px]"></i> Yesterday
+                                    </div>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex-shrink-0">
+                                    Verified &amp; Resolved (+50 PTS)
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -1132,7 +1162,7 @@
     <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500">
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-                <span class="font-bold text-slate-800 dark:text-slate-200">EcoRoute AI Prototype</span> — Smart Municipal Waste Collection System
+                <span class="font-bold text-slate-800 dark:text-slate-200">EcoRoute AI Prototype</span> - Smart Municipal Waste Collection System
             </div>
             <div class="flex items-center gap-4">
                 <a href="#" onclick="switchView('landing')" class="hover:underline">Home</a>
