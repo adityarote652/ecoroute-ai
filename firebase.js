@@ -3,13 +3,15 @@ import { getFirestore, collection, addDoc, getDocs, doc, setDoc } from 'firebase
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Standard Firebase Configuration
+// Values are loaded from .env (NEVER hardcode secrets here).
+// See .env.example for the required variable names.
 const firebaseConfig = {
-  apiKey: "AIzaSyMockApiKeyForEcoRouteWasteAI12345",
-  authDomain: "ecoroute-ai.firebaseapp.com",
-  projectId: "ecoroute-ai",
-  storageBucket: "ecoroute-ai.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef123456"
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase App instance
