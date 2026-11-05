@@ -897,6 +897,7 @@
           if (window.mountReactMap) window.mountReactMap();
       } else if (view === 'citizen') {
           if (window.mountCitizenMap) window.mountCitizenMap();
+          if (window.mountCitizenWallet) window.mountCitizenWallet();
       }
   }
 
@@ -965,10 +966,40 @@
       }
   };
   
+  let _citizenBannerTimer = null;
+  function showCitizenBanner(message) {
+      const banner = document.getElementById('citizenNotificationBanner');
+      const textEl = document.getElementById('citizenNotificationText');
+      if (textEl) textEl.textContent = message;
+      if (banner) {
+          banner.classList.remove('hidden');
+          clearTimeout(_citizenBannerTimer);
+          _citizenBannerTimer = setTimeout(() => {
+              banner.classList.add('hidden');
+          }, 5000);
+      }
+      showSimAlert(message);
+  }
+  window.showCitizenBanner = showCitizenBanner;
+
   window.previewUpload = function(input) {
       if (input.files && input.files[0]) {
-          const text = $('uploadText');
-          if (text) text.textContent = `📷 ${input.files[0].name}`;
+          const file = input.files[0];
+          const reader = new FileReader();
+          reader.onload = function(e) {
+              const thumb = document.getElementById('uploadThumbnail');
+              const icon = document.getElementById('uploadIcon');
+              const text = document.getElementById('uploadText');
+              if (thumb) {
+                  thumb.src = e.target.result;
+                  thumb.classList.remove('hidden');
+              }
+              if (icon) icon.classList.add('hidden');
+              if (text) {
+                  text.innerHTML = `<span class="text-amber-600 dark:text-amber-400 font-bold">${file.name}</span><span class="text-[10px] text-slate-400 block mt-0.5">Click to replace photo</span>`;
+              }
+          };
+          reader.readAsDataURL(file);
       }
   };
 
@@ -987,7 +1018,7 @@
           renderDashboard();
       }
 
-      // Append new ticket card to "My Submitted Reports Status"
+      // Prepend new pending ticket card into "My Submitted Reports Status"
       const reportsContainer = $('citizenMyReports');
       if (reportsContainer) {
           const ticketNum = Math.floor(105 + Math.random() * 20);
@@ -1010,28 +1041,55 @@
           reportsContainer.prepend(card);
       }
 
-      // Add +50 to greenPoints
+      // Increase pts by 50 (to 500 PTS) in React state & DOM
+      if (window.setGreenPoints) {
+          window.setGreenPoints(prev => prev + 50);
+      }
       state.greenPoints = (state.greenPoints || 450) + 50;
       updateGreenPointsUI();
+      window.dispatchEvent(new CustomEvent('citizen:add-points', { detail: { amount: 50 } }));
 
-      // Reset the form inputs
+      // Reset the form inputs and miniature preview
       if (e.target) e.target.reset();
+      const thumb = $('uploadThumbnail');
+      const icon = $('uploadIcon');
       const ut = $('uploadText');
+      if (thumb) { thumb.src = ''; thumb.classList.add('hidden'); }
+      if (icon) icon.classList.remove('hidden');
       if (ut) ut.textContent = 'Click to select photo or capture';
 
-      showSimAlert(`✅ Citizen report submitted! +50 PTS added to your wallet (Total: ${state.greenPoints} PTS).`);
+      // Trigger temporary green success banner at the top
+      showCitizenBanner("Report Verified & Submitted! +50 Green Points Added");
   };
 
   window.redeemReward = function(itemName, itemCost) {
-      if ((state.greenPoints || 450) >= itemCost) {
-          state.greenPoints -= itemCost;
+      const currentPts = (typeof window.citizenPoints === 'number') ? window.citizenPoints : (state.greenPoints || 450);
+      if (currentPts >= itemCost) {
+          if (window.setGreenPoints) {
+              window.setGreenPoints(prev => Math.max(0, prev - itemCost));
+          }
+          state.greenPoints = Math.max(0, currentPts - itemCost);
           updateGreenPointsUI();
-          alert("Voucher redeemed successfully!");
-          showSimAlert(`🎉 Voucher redeemed successfully! -${itemCost} PTS deducted. Remaining: ${state.greenPoints} PTS.`);
+          window.dispatchEvent(new CustomEvent('citizen:deduct-points', { detail: { amount: itemCost } }));
+          showCitizenBanner("Voucher Claimed! Discount code sent to registered mobile");
       } else {
-          alert(`Insufficient Green Points! You have ${state.greenPoints} PTS, but this item requires ${itemCost} PTS.`);
-          showSimAlert(`⚠️ Insufficient Green Points! Need ${itemCost} PTS.`);
+          showCitizenBanner(`Insufficient Green Points! You have ${currentPts} PTS, but this item requires ${itemCost} PTS.`);
       }
+  };
+
+  window.openSpecialPickupModal = function() {
+      showCitizenBanner("E-Waste Pickup Scheduled for tomorrow 10:00 AM");
+      const m = document.getElementById('specialPickupModal');
+      if (m) m.classList.remove('hidden');
+  };
+  window.closeSpecialPickupModal = function() {
+      const m = document.getElementById('specialPickupModal');
+      if (m) m.classList.add('hidden');
+  };
+  window.handleSpecialPickupSubmit = function(e) {
+      if (e) e.preventDefault();
+      window.closeSpecialPickupModal();
+      showCitizenBanner("E-Waste Pickup Scheduled for tomorrow 10:00 AM");
   };
 
   // Auth mocks
@@ -1161,6 +1219,7 @@
     if (view === 'citizen') {
       setTimeout(function() {
         if (window.mountCitizenMap) window.mountCitizenMap();
+        if (window.mountCitizenWallet) window.mountCitizenWallet();
       }, 80);
     }
   };
@@ -1188,6 +1247,9 @@ window.updateParamThreshold = function(val) {
 
 window.saveAdminParams = function() {
   const banner = document.getElementById('adminNotificationBanner');
+  const textEl = document.getElementById('adminNotificationText');
+  const msg = "System Parameters & CO2 Factors Saved Successfully";
+  if (textEl) textEl.textContent = msg;
   if (banner) {
     banner.classList.remove('hidden');
     clearTimeout(window._adminBannerTimer);
@@ -1196,7 +1258,7 @@ window.saveAdminParams = function() {
     }, 4500);
   }
   if (window.showSimAlert) {
-    window.showSimAlert('✅ System thresholds and emission factors saved successfully!');
+    window.showSimAlert(msg);
   }
 };
 
@@ -1253,6 +1315,44 @@ window.addNewAdminBin = function() {
   }
 };
 
+window.addNewAdminTruck = function() {
+  const list = document.getElementById('adminTruckList');
+  if (list) {
+    const count = list.querySelectorAll('.p-4').length + 1;
+    const truckId = `Truck TR-0${count}`;
+    const driver = count === 3 ? 'Anil M.' : 'Vikram S.';
+    const cap = '4500L';
+    const card = document.createElement('div');
+    card.className = 'p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 animate-in fade-in duration-300';
+    card.innerHTML = `
+      <div class="flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 flex items-center justify-center font-bold text-sm">
+              <i class="fa-solid fa-truck"></i>
+          </div>
+          <div>
+              <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-900 dark:text-white text-xs">${truckId}</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      Active
+                  </span>
+              </div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Driver: <strong class="text-slate-700 dark:text-slate-300">${driver}</strong> • Cap: <span class="font-mono font-semibold">${cap}</span>
+              </div>
+          </div>
+      </div>
+      <div class="text-right">
+          <span class="text-[11px] text-slate-400 block font-mono">Assigned: Route ${String.fromCharCode(64 + count)}</span>
+          <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Dispatched &amp; Active</span>
+      </div>
+    `;
+    list.appendChild(card);
+  }
+  if (window.showSimAlert) {
+    window.showSimAlert('🚛 Added new truck to Fleet List.');
+  }
+};
+
 window.openAddBinModal = window.addNewAdminBin;
 
 window.handleCreateBin = function(e) {
@@ -1273,9 +1373,5 @@ window.triggerBulkImport = function() {
   }
 };
 
-window.openAddTruckModal = function() {
-  if (window.showSimAlert) {
-    window.showSimAlert('🚛 Truck Provisioning: Dispatched request for new municipal fleet vehicle.');
-  }
-};
+window.openAddTruckModal = window.addNewAdminTruck;
 

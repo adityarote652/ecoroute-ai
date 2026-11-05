@@ -628,7 +628,7 @@
                     <!-- Temporary Green Notification Banner -->
                     <div id="adminNotificationBanner" class="hidden p-3.5 rounded-2xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in duration-200 shadow-sm">
                         <i class="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400 text-base flex-shrink-0"></i>
-                        <span>System thresholds and emission factors saved successfully!</span>
+                        <span id="adminNotificationText">System Parameters & CO2 Factors Saved Successfully</span>
                     </div>
 
                     <div class="space-y-4">
@@ -1150,6 +1150,17 @@
         <!-- VIEW 3: CITIZEN DASHBOARD -->
         <section id="view-citizen" class="view-section hidden p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
             
+            <!-- Citizen Top Green Notification Banner -->
+            <div id="citizenNotificationBanner" class="hidden p-4 rounded-2xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-sm font-semibold flex items-center justify-between gap-3 shadow-md animate-in fade-in duration-300">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400 text-xl flex-shrink-0"></i>
+                    <span id="citizenNotificationText">Report Verified & Submitted! +50 Green Points Added</span>
+                </div>
+                <button onclick="document.getElementById('citizenNotificationBanner').classList.add('hidden')" class="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 text-sm p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
             <!-- Header Bar -->
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div class="flex items-center gap-4">
@@ -1166,11 +1177,13 @@
                 </div>
 
                 <!-- Green Points Pill Card -->
-                <div class="flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-2xl shadow-md">
-                    <i class="fa-solid fa-coins text-amber-300 text-2xl"></i>
-                    <div>
-                        <div class="text-[10px] uppercase font-bold tracking-wider opacity-90">Green Points Wallet</div>
-                        <div class="text-2xl font-extrabold font-mono" id="citizenPoints">450 PTS</div>
+                <div id="citizenWalletRoot">
+                    <div class="flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-2xl shadow-md">
+                        <i class="fa-solid fa-coins text-amber-300 text-2xl"></i>
+                        <div>
+                            <div class="text-[10px] uppercase font-bold tracking-wider opacity-90">Green Points Wallet</div>
+                            <div class="text-2xl font-extrabold font-mono" id="citizenPoints">450 PTS</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1207,8 +1220,9 @@
 
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Upload Photo Proof</label>
-                            <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-all" onclick="document.getElementById('citizenFile').click()">
-                                <i class="fa-solid fa-cloud-arrow-up text-amber-500 text-xl mb-1"></i>
+                            <div id="uploadBox" class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-all relative overflow-hidden" onclick="document.getElementById('citizenFile').click()">
+                                <img id="uploadThumbnail" class="hidden w-20 h-20 object-cover rounded-xl mx-auto shadow-md border border-amber-300 mb-2" alt="Proof thumbnail preview" />
+                                <i id="uploadIcon" class="fa-solid fa-cloud-arrow-up text-amber-500 text-xl mb-1 block"></i>
                                 <div class="text-xs text-slate-600 dark:text-slate-400 font-medium" id="uploadText">Click to select photo or capture</div>
                                 <input type="file" id="citizenFile" accept="image/*" class="hidden" onchange="previewUpload(this)">
                             </div>
@@ -1489,5 +1503,6 @@
     <script type="module" src="data.js"></script>
     <script type="module" src="app.js"></script>
     <script type="module" src="MapComponent.jsx"></script>
+    <script type="module" src="CitizenComponent.jsx"></script>
 </body>
 </html>

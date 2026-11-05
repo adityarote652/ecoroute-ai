@@ -236,9 +236,12 @@ export function mountCitizenMap() {
   }
 }
 
+import { CitizenWallet, mountCitizenWallet } from './CitizenComponent.jsx';
+
 export function mountAllMaps() {
   mountMap();
   mountCitizenMap();
+  mountCitizenWallet();
 }
 
 if (document.readyState === 'loading') {
@@ -249,6 +252,9 @@ if (document.readyState === 'loading') {
 
 window.mountReactMap = mountMap;
 window.mountCitizenMap = mountCitizenMap;
+window.mountCitizenWallet = mountCitizenWallet;
 window.mountAllMaps = mountAllMaps;
 window.PuneMap = PuneMap;
 window.EcoRouteMap = EcoRouteMap;
+window.CitizenWallet = CitizenWallet;
+export { CitizenWallet, mountCitizenWallet };
