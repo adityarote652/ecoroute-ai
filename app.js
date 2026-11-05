@@ -1297,8 +1297,86 @@
       const m = document.getElementById('mobileMenu');
       if (m) m.classList.toggle('hidden');
   };
+  // Multi-language Dictionary for Home Landing Hero & Stats
+  const LANG_DICTIONARY = {
+    en: {
+      badge: "Sensorless Predictive AI Engine",
+      title: 'Predictive Waste Collection & <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">Garbage Truck Route Optimization</span>',
+      subtitle: "Eliminate fixed pickup schedules. Predict bin overflow using historical waste rates, area priority, and citizen reports-reducing trips, fuel, traffic, and urban emissions.",
+      cta1: "Launch Route Optimization Engine",
+      cta2: "Report Overflow Bin",
+      rule1: "Prediction Rule",
+      rule2: "Dispatch Trigger",
+      rule3: "Optimization Model",
+      statDistance: "Total Distance Saved",
+      statFuel: "Fuel Conserved",
+      statCO2: "CO₂ Emissions Avoided",
+      statBiogas: "Biogas Energy Generated",
+      toast: "Switched language to English (EN)"
+    },
+    hi: {
+      badge: "सेंसर-मुक्त प्रेडिक्टिव एआई इंजन",
+      title: 'स्मार्ट कचरा संकलन और <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">कचरा ट्रक रूट अनुकूलन</span>',
+      subtitle: "निश्चित पिकअप कार्यक्रम समाप्त करें। ऐतिहासिक डेटा, क्षेत्र प्राथमिकता और नागरिक रिपोर्ट के आधार पर कचरा पात्र भरने का पूर्वानुमान लगाएं - ईंधन, यातायात और प्रदूषण कम करें।",
+      cta1: "रूट अनुकूलन इंजन शुरू करें",
+      cta2: "कचरा पात्र ओवरफ्लो रिपोर्ट करें",
+      rule1: "पूर्वानुमान नियम",
+      rule2: "डिस्पैच ट्रिगर",
+      rule3: "अनुकूलन मॉडल",
+      statDistance: "कुल बचाई गई दूरी",
+      statFuel: "ईंधन की बचत",
+      statCO2: "CO₂ उत्सर्जन में कमी",
+      statBiogas: "बायोगैस ऊर्जा उत्पादन",
+      toast: "भाषा बदलकर हिंदी (Hindi) की गई"
+    },
+    mr: {
+      badge: "सेन्सर-मुक्त प्रेडिक्टिव्ह एआय इंजिन",
+      title: 'स्मार्ट कचरा संकलन आणि <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">कचरा वाहतूक मार्ग ऑप्टिमायझेशन</span>',
+      subtitle: "ठरावीक वेळापत्रक बंद करा. ऐतिहासिक कचरा दर, परिसर प्राधान्य आणि नागरिक तक्रारींद्वारे कचरा कुंडी भरण्याचा अचूक अंदाज घ्या - इंधन, वाहतूक कोंडी आणि उत्सर्जन घटवा.",
+      cta1: "रूट ऑप्टिमायझेशन इंजिन सुरू करा",
+      cta2: "कचरा पेटी ओव्हरफ्लो तक्रार नोंदवा",
+      rule1: "अंदाज नियम",
+      rule2: "डिस्पॅच ट्रिगर",
+      rule3: "ऑप्टिमायझेशन मॉडेल",
+      statDistance: "एकूण वाचवलेले अंतर",
+      statFuel: "इंधनाची बचत",
+      statCO2: "CO₂ उत्सर्जनात घट",
+      statBiogas: "बायोगॅस ऊर्जा निर्मिती",
+      toast: "भाषा बदलून मराठी (Marathi) केली"
+    }
+  };
+
   window.toggleLang = function(lang) {
-      console.log('Language set to:', lang);
+    const dict = LANG_DICTIONARY[lang] || LANG_DICTIONARY.en;
+    const badgeEl = document.getElementById('heroBadgeText');
+    const titleEl = document.getElementById('heroTitle');
+    const subEl = document.getElementById('heroSubtitle');
+    const cta1El = document.getElementById('heroCta1Text');
+    const cta2El = document.getElementById('heroCta2Text');
+    const r1El = document.getElementById('heroRule1Title');
+    const r2El = document.getElementById('heroRule2Title');
+    const r3El = document.getElementById('heroRule3Title');
+    const sDistEl = document.getElementById('statDistanceLabel');
+    const sFuelEl = document.getElementById('statFuelLabel');
+    const sCO2El = document.getElementById('statCO2Label');
+    const sBioEl = document.getElementById('statBiogasLabel');
+
+    if (badgeEl) badgeEl.textContent = dict.badge;
+    if (titleEl) titleEl.innerHTML = dict.title;
+    if (subEl) subEl.textContent = dict.subtitle;
+    if (cta1El) cta1El.textContent = dict.cta1;
+    if (cta2El) cta2El.textContent = dict.cta2;
+    if (r1El) r1El.textContent = dict.rule1;
+    if (r2El) r2El.textContent = dict.rule2;
+    if (r3El) r3El.textContent = dict.rule3;
+    if (sDistEl) sDistEl.textContent = dict.statDistance;
+    if (sFuelEl) sFuelEl.textContent = dict.statFuel;
+    if (sCO2El) sCO2El.textContent = dict.statCO2;
+    if (sBioEl) sBioEl.textContent = dict.statBiogas;
+
+    if (window.showSimAlert) {
+      window.showSimAlert(dict.toast);
+    }
   };
   window.runDemoSequence = function() {
       window.quickLogin('municipal');
@@ -1398,6 +1476,8 @@
     if (view === 'admin') {
       setTimeout(function() {
         if (window.mountAdminBinTable) window.mountAdminBinTable();
+        if (window.mountAdminTruckList) window.mountAdminTruckList();
+        if (window.mountAdminAuditLog) window.mountAdminAuditLog();
       }, 80);
     }
   };
@@ -1545,18 +1625,135 @@ window.addNewAdminTruck = function() {
   }
 };
 
-window.openAddBinModal = window.addNewAdminBin;
-
-window.handleCreateBin = function(e) {
-  if (e) e.preventDefault();
-  window.addNewAdminBin();
+// Centered Modal Overlays for Admin Operations
+window.openAddBinModal = function() {
   const m = document.getElementById('addBinModal');
-  if (m) m.classList.add('hidden');
+  if (m) {
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+  }
 };
 
 window.closeAddBinModal = function() {
   const m = document.getElementById('addBinModal');
-  if (m) m.classList.add('hidden');
+  if (m) {
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+  }
+};
+
+window.handleCreateBin = function(e) {
+  if (e) e.preventDefault();
+  const idInput = document.getElementById('newBinId');
+  const locInput = document.getElementById('newBinLocation');
+  const capInput = document.getElementById('newBinCapacity');
+  const typeInput = document.getElementById('newBinType');
+  const rateInput = document.getElementById('newBinRate');
+  const prioInput = document.getElementById('newBinPriority');
+
+  const rawId = idInput?.value?.trim() || `B-${Math.floor(Math.random() * 80 + 26)}`;
+  const binId = rawId.toUpperCase().startsWith('B-') ? rawId.toUpperCase() : `B-${rawId}`;
+  const location = locInput?.value?.trim() || 'Deccan Gymkhana';
+  const capNum = capInput?.value || '1000';
+  const capacity = capNum.endsWith('L') ? capNum : `${capNum}L`;
+  const wasteType = typeInput?.value || 'Organic';
+  const rateNum = rateInput?.value || '85';
+  const dailyRate = `${rateNum} kg/day`;
+  const priority = prioInput?.value || 'Commercial Market';
+
+  const newBin = {
+    id: binId,
+    name: location,
+    sector: `Ward 04 • ${priority}`,
+    capacity: capacity,
+    capacityL: parseInt(capNum, 10) || 1000,
+    wasteType: wasteType,
+    dailyRate: dailyRate,
+    fillPct: 85,
+    status: 'Active',
+    areaType: priority
+  };
+
+  // Sync into AppContext
+  if (window.addBinToContext) {
+    window.addBinToContext(newBin);
+  } else if (window.appStore?.actions?.addBin) {
+    window.appStore.actions.addBin(newBin);
+  }
+
+  // Sync with local state bins if active
+  if (window.state && Array.isArray(window.state.bins)) {
+    window.state.bins.push({
+      ...newBin,
+      fillPercent: 85,
+      urgency: 'high',
+      dailyGenerationRate: parseInt(rateNum, 10) || 85
+    });
+  }
+
+  // Close modal and reset form
+  window.closeAddBinModal();
+  const form = document.querySelector('#addBinModal form');
+  if (form) form.reset();
+
+  const msg = `✅ Bin ${newBin.id} (${newBin.name} • ${newBin.capacity} • ${newBin.wasteType}) added to Global Registry!`;
+  if (window.showSimAlert) window.showSimAlert(msg);
+};
+
+window.openAddTruckModal = function() {
+  const m = document.getElementById('addTruckModal');
+  if (m) {
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+  }
+};
+
+window.closeAddTruckModal = function() {
+  const m = document.getElementById('addTruckModal');
+  if (m) {
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+  }
+};
+
+window.handleCreateTruck = function(e) {
+  if (e) e.preventDefault();
+  const idInput = document.getElementById('newTruckId');
+  const driverInput = document.getElementById('newTruckDriver');
+  const capInput = document.getElementById('newTruckCapacity');
+  const typeInput = document.getElementById('newTruckType');
+  const zoneInput = document.getElementById('newTruckZone');
+
+  const idVal = idInput?.value?.trim() || `Truck TR-0${Math.floor(Math.random() * 7 + 3)}`;
+  const driver = driverInput?.value?.trim() || 'Rajesh Patil (Kothrud Stand)';
+  const capVal = capInput?.value?.trim() || '4500L';
+  const capacity = capVal.endsWith('L') ? capVal : `${capVal}L`;
+  const type = typeInput?.value || 'Heavy Compactor';
+  const zone = zoneInput?.value?.trim() || 'Route C • Ward 4';
+
+  const newTruck = {
+    id: idVal,
+    driver: driver,
+    capacity: capacity,
+    zone: zone,
+    status: 'Active',
+    type: type
+  };
+
+  // Sync into AppContext
+  if (window.addTruckToContext) {
+    window.addTruckToContext(newTruck);
+  } else if (window.appStore?.actions?.addTruck) {
+    window.appStore.actions.addTruck(newTruck);
+  }
+
+  // Close modal and reset form
+  window.closeAddTruckModal();
+  const form = document.querySelector('#addTruckModal form');
+  if (form) form.reset();
+
+  const msg = `🚛 Truck ${newTruck.id} (${newTruck.driver} • ${newTruck.capacity}) registered to Fleet List!`;
+  if (window.showSimAlert) window.showSimAlert(msg);
 };
 
 window.triggerBulkImport = function() {
@@ -1564,6 +1761,4 @@ window.triggerBulkImport = function() {
     window.showSimAlert('📂 Bulk CSV Import: Synchronized 25 telemetry streams from municipal sensor grid.');
   }
 };
-
-window.openAddTruckModal = window.addNewAdminTruck;
 

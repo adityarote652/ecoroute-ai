@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useSyncExternalStore } from 'react';
+import React, { createContext, useContext, useState, useEffect, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
 
 // ── Initial State Seed Data ──────────────────────────────────────────────────
@@ -74,6 +74,23 @@ const INITIAL_BINS = [
   },
 ];
 
+const INITIAL_TRUCKS = [
+  {
+    id: 'Truck TR-01',
+    driver: 'Ramesh P.',
+    capacity: '4000L',
+    status: 'Active',
+    zone: 'Route A • Commercial Corridor',
+  },
+  {
+    id: 'Truck TR-02',
+    driver: 'Suresh K.',
+    capacity: '3500L',
+    status: 'Standby',
+    zone: 'Route B • Residential North',
+  },
+];
+
 // ── Global Reactive Store (Bridge for Context across separate React roots) ───
 class GlobalAppStore {
   constructor() {
@@ -81,6 +98,7 @@ class GlobalAppStore {
       citizenReports: INITIAL_REPORTS,
       greenPoints: 450,
       bins: INITIAL_BINS,
+      trucks: INITIAL_TRUCKS,
       isSimulated: false,
     };
     this.listeners = new Set();
@@ -107,7 +125,6 @@ class GlobalAppStore {
           greenPoints: prev.greenPoints + 50, // Auto-add +50 points on submission
         }));
 
-        // Keep DOM elements synchronized
         this.syncDOM();
         return newReport;
       },
@@ -192,16 +209,17 @@ class GlobalAppStore {
         this.syncDOM();
       },
 
+      // Modal Add Bin handler: appends new data to Context bins array
       addBin: (binData) => {
         const newBin = {
           id: binData.id || `B-${String(this.state.bins.length + 1).padStart(2, '0')}`,
-          name: binData.name || 'Deccan Gymkhana Stand',
+          name: binData.name || binData.location || 'Deccan Gymkhana Stand',
           sector: binData.sector || 'Ward 04 • High-Priority Sector',
           capacity: binData.capacity || '1000L',
           wasteType: binData.wasteType || 'Organic',
           dailyRate: binData.dailyRate || '85 kg/day',
-          baseFill: binData.fillPct || 85,
-          fillPct: binData.fillPct || 85,
+          baseFill: parseInt(binData.fillPct, 10) || 85,
+          fillPct: parseInt(binData.fillPct, 10) || 85,
           status: binData.status || 'Active',
         };
 
@@ -209,6 +227,24 @@ class GlobalAppStore {
           bins: [...prev.bins, newBin],
         }));
         this.syncDOM();
+        return newBin;
+      },
+
+      // Modal Add Truck handler: appends new data to Context trucks array
+      addTruck: (truckData) => {
+        const newTruck = {
+          id: truckData.id || `Truck TR-0${this.state.trucks.length + 1}`,
+          driver: truckData.driver || 'Anil M.',
+          capacity: truckData.capacity || '4500L',
+          status: truckData.status || 'Active',
+          zone: truckData.zone || `Route ${String.fromCharCode(65 + this.state.trucks.length)} • Priority Sector`,
+        };
+
+        this.setState((prev) => ({
+          trucks: [...prev.trucks, newTruck],
+        }));
+        this.syncDOM();
+        return newTruck;
       },
     };
   }
@@ -227,7 +263,6 @@ class GlobalAppStore {
   };
 
   syncDOM = () => {
-    // Keep raw DOM elements in sync if present
     if (typeof document === 'undefined') return;
 
     // Green Points
@@ -282,7 +317,6 @@ export function AppProvider({ children }) {
 export function useApp() {
   const context = useContext(AppContext);
   if (context) return context;
-  // Seamless fallback to store directly if rendered outside a specific Provider boundary
   const state = useSyncExternalStore(appStore.subscribe, appStore.getState);
   return { ...state, ...appStore.actions };
 }
@@ -344,7 +378,7 @@ export function MunicipalComplaintsPanel() {
 
 // ── 2. Admin Bin Registry Table React Component ─────────────────────────────
 export function AdminBinRegistryTable() {
-  const { bins, isSimulated } = useApp();
+  const { bins } = useApp();
 
   return (
     <>
@@ -355,7 +389,7 @@ export function AdminBinRegistryTable() {
         return (
           <tr
             key={bin.id}
-            className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors"
+            className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors animate-in fade-in duration-200"
           >
             <td className="p-3">
               <div className="font-bold text-slate-900 dark:text-white">
@@ -417,7 +451,102 @@ export function AdminBinRegistryTable() {
   );
 }
 
-// ── 3. Green Points Wallet React Component ──────────────────────────────────
+// ── 3. Municipal Fleet & Drivers React Component ─────────────────────────────
+export function AdminTruckListPanel() {
+  const { trucks } = useApp();
+
+  return (
+    <div className="space-y-3">
+      {trucks.map((truck) => (
+        <div
+          key={truck.id}
+          className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 animate-in fade-in duration-300"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 flex items-center justify-center font-bold text-sm">
+              <i className="fa-solid fa-truck"></i>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-900 dark:text-white text-xs">{truck.id}</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  {truck.status}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Driver: <strong className="text-slate-700 dark:text-slate-300">{truck.driver}</strong> • Cap: <span className="font-mono font-semibold">{truck.capacity}</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-[11px] text-slate-400 block font-mono">{truck.zone}</span>
+            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Dispatched &amp; Active</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── 4. Dynamic Audit Log React Component (every 10 seconds interval) ────────
+export function AdminAuditLogPanel() {
+  const [logs, setLogs] = useState([
+    { id: 1, time: '[10:00 AM]', tag: 'Driver Shift', text: 'Driver TR-01 accepted dispatched route for Ward 4', icon: 'fa-circle-check', color: 'indigo' },
+    { id: 2, time: '[09:15 AM]', tag: 'Citizen Inbound', text: 'Citizen report #104 logged for Shivajinagar Market', icon: 'fa-triangle-exclamation', color: 'amber' },
+    { id: 3, time: '[08:30 AM]', tag: 'Auto Optimizer', text: 'System auto-generated optimal route for Ward 4 (52.6% saved)', icon: 'fa-route', color: 'emerald' },
+  ]);
+
+  useEffect(() => {
+    const eventsPool = [
+      { tag: 'Health Check', text: 'System health check complete: All 25 bin telemetry streams online', icon: 'fa-heart-pulse', color: 'emerald' },
+      { tag: 'Fleet GPS', text: 'Truck TR-02 GPS ping received at Deccan Gymkhana Stand', icon: 'fa-location-dot', color: 'indigo' },
+      { tag: 'Telemetry Sync', text: 'Ward 4 telemetry stream synced: 25 sensors reporting optimal fill rates', icon: 'fa-tower-broadcast', color: 'teal' },
+      { tag: 'Route Engine', text: 'OSRM street driving route recalibrated: -18.2 km / 20.6 kg CO2 saved', icon: 'fa-route', color: 'blue' },
+      { tag: 'Citizen Bot', text: 'Citizen report verified for Mandai Sub-Ward (+50 Green Points)', icon: 'fa-comments', color: 'amber' },
+      { tag: 'Driver Ping', text: 'Truck TR-01 completed waypoint #2 at Karvenagar Station', icon: 'fa-truck-fast', color: 'emerald' },
+    ];
+
+    const timer = setInterval(() => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const ev = eventsPool[Math.floor(Math.random() * eventsPool.length)];
+
+      const newEntry = {
+        id: Date.now() + Math.random(),
+        time: `[${timeStr}]`,
+        tag: ev.tag,
+        text: ev.text,
+        icon: ev.icon,
+        color: ev.color,
+      };
+
+      setLogs((prev) => [newEntry, ...prev.slice(0, 14)]);
+    }, 10000); // exactly every 10 seconds
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="space-y-3">
+      {logs.map((log) => (
+        <div key={log.id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className={`w-7 h-7 rounded-lg bg-${log.color}-100 dark:bg-${log.color}-950 text-${log.color}-600 flex items-center justify-center flex-shrink-0 text-xs`}>
+            <i className={`fa-solid ${log.icon}`}></i>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-[10px] text-slate-400 font-bold">{log.time}</span>
+              <span className={`text-[10px] font-semibold text-${log.color}-600`}>{log.tag}</span>
+            </div>
+            <p className="text-slate-700 dark:text-slate-300 text-xs mt-0.5">{log.text}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── 5. Green Points Wallet React Component ──────────────────────────────────
 export function CitizenWallet() {
   const { greenPoints } = useApp();
 
@@ -476,10 +605,38 @@ export function mountAdminBinTable() {
   }
 }
 
+export function mountAdminTruckList() {
+  const rootEl = document.getElementById('adminTruckList');
+  if (rootEl && !rootEl._reactRoot) {
+    const root = createRoot(rootEl);
+    root.render(
+      <AppProvider>
+        <AdminTruckListPanel />
+      </AppProvider>
+    );
+    rootEl._reactRoot = root;
+  }
+}
+
+export function mountAdminAuditLog() {
+  const rootEl = document.getElementById('adminAuditLogs');
+  if (rootEl && !rootEl._reactRoot) {
+    const root = createRoot(rootEl);
+    root.render(
+      <AppProvider>
+        <AdminAuditLogPanel />
+      </AppProvider>
+    );
+    rootEl._reactRoot = root;
+  }
+}
+
 export function mountAllContextPanels() {
   mountCitizenWallet();
   mountMunicipalComplaints();
   mountAdminBinTable();
+  mountAdminTruckList();
+  mountAdminAuditLog();
   appStore.syncDOM();
 }
 
@@ -499,6 +656,8 @@ if (typeof window !== 'undefined') {
   window.AppContext = AppContext;
   window.mountMunicipalComplaints = mountMunicipalComplaints;
   window.mountAdminBinTable = mountAdminBinTable;
+  window.mountAdminTruckList = mountAdminTruckList;
+  window.mountAdminAuditLog = mountAdminAuditLog;
   window.mountCitizenWallet = mountCitizenWallet;
   window.mountAllContextPanels = mountAllContextPanels;
 
@@ -510,4 +669,5 @@ if (typeof window !== 'undefined') {
   window.simulateAdvanceTimeInContext = () => appStore.actions.simulateAdvanceTime();
   window.resetSimulationInContext = () => appStore.actions.resetSimulation();
   window.addBinToContext = (b) => appStore.actions.addBin(b);
+  window.addTruckToContext = (t) => appStore.actions.addTruck(t);
 }

@@ -468,7 +468,7 @@ export function mountCitizenMap() {
 }
 
 import { CitizenWallet, mountCitizenWallet } from './CitizenComponent.jsx';
-import { mountAllContextPanels, mountMunicipalComplaints, mountAdminBinTable } from './AppContext.jsx';
+import { mountAllContextPanels, mountMunicipalComplaints, mountAdminBinTable, mountAdminTruckList, mountAdminAuditLog } from './AppContext.jsx';
 
 export function mountAllMaps() {
   mountMap();
@@ -476,6 +476,8 @@ export function mountAllMaps() {
   mountCitizenWallet();
   mountMunicipalComplaints();
   mountAdminBinTable();
+  mountAdminTruckList();
+  mountAdminAuditLog();
   mountAllContextPanels();
 }
 
@@ -490,10 +492,12 @@ window.mountCitizenMap = mountCitizenMap;
 window.mountCitizenWallet = mountCitizenWallet;
 window.mountMunicipalComplaints = mountMunicipalComplaints;
 window.mountAdminBinTable = mountAdminBinTable;
+window.mountAdminTruckList = mountAdminTruckList;
+window.mountAdminAuditLog = mountAdminAuditLog;
 window.mountAllContextPanels = mountAllContextPanels;
 window.mountAllMaps = mountAllMaps;
 window.PuneMap = PuneMap;
 window.EcoRouteMap = EcoRouteMap;
 window.CitizenWallet = CitizenWallet;
-export { CitizenWallet, mountCitizenWallet, mountAllContextPanels, mountMunicipalComplaints, mountAdminBinTable };
+export { CitizenWallet, mountCitizenWallet, mountAllContextPanels, mountMunicipalComplaints, mountAdminBinTable, mountAdminTruckList, mountAdminAuditLog };
 
