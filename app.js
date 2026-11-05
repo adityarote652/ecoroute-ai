@@ -891,11 +891,12 @@
                       <span>Login / Portal</span>
                   </button>`;
           } else {
-              const activeRole = user ? user.role.toUpperCase() : (view === 'admin' ? 'ADMIN' : view === 'municipal' ? 'MUNICIPAL' : 'CITIZEN');
+              const activeRole = user ? user.role.toUpperCase() : (view === 'admin' ? 'ADMIN' : view === 'municipal' ? 'MUNICIPAL' : view === 'driver' ? 'DRIVER' : 'CITIZEN');
               const roleConfig = {
                   ADMIN: { label: 'ADMIN', cls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' },
                   MUNICIPAL: { label: 'MUNICIPAL', cls: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border-teal-200 dark:border-teal-800' },
-                  CITIZEN: { label: 'CITIZEN', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800' }
+                  CITIZEN: { label: 'CITIZEN', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800' },
+                  DRIVER: { label: 'DRIVER', cls: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 border-sky-200 dark:border-sky-800' }
               };
               const roleInfo = roleConfig[activeRole] || { label: activeRole, cls: 'bg-slate-100 text-slate-700 border-slate-200' };
               authC.innerHTML = `
@@ -914,6 +915,19 @@
       } else if (view === 'citizen') {
           if (window.mountCitizenMap) window.mountCitizenMap();
           if (window.mountCitizenWallet) window.mountCitizenWallet();
+      } else if (view === 'driver') {
+          if (window.mountDriverDashboard) window.mountDriverDashboard();
+          try {
+            if (window.location.pathname !== '/driver') {
+              window.history.pushState({ view: 'driver' }, '', '/driver');
+            }
+          } catch(e) {}
+      } else {
+          try {
+            if (window.location.pathname === '/driver') {
+              window.history.pushState({ view }, '', '/');
+            }
+          } catch(e) {}
       }
   }
 
@@ -930,8 +944,24 @@
         cb.innerHTML = state.bins.map(b => `<option value="${b.id}">${b.id} - ${b.name}</option>`).join('');
     }
 
-    // Show landing view
-    switchViewInternal('landing');
+    // Support URL routing for /driver or hash
+    const isDriverRoute = window.location.pathname === '/driver' ||
+                          window.location.pathname.endsWith('/driver') ||
+                          window.location.hash === '#driver' ||
+                          window.location.hash === '#/driver';
+    if (isDriverRoute) {
+      switchViewInternal('driver');
+    } else {
+      switchViewInternal('landing');
+    }
+
+    window.addEventListener('popstate', () => {
+      if (window.location.pathname === '/driver' || window.location.hash.includes('driver')) {
+        switchViewInternal('driver');
+      } else {
+        switchViewInternal('landing');
+      }
+    });
 
     console.log(
       '%c EcoRoute AI %c Phase 1 · Prototype Simulation ',
@@ -1478,6 +1508,11 @@
         if (window.mountAdminBinTable) window.mountAdminBinTable();
         if (window.mountAdminTruckList) window.mountAdminTruckList();
         if (window.mountAdminAuditLog) window.mountAdminAuditLog();
+      }, 80);
+    }
+    if (view === 'driver') {
+      setTimeout(function() {
+        if (window.mountDriverDashboard) window.mountDriverDashboard();
       }, 80);
     }
   };

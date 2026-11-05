@@ -118,6 +118,9 @@
                     <button onclick="switchView('citizen')" data-view="citizen" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
                         <i class="fa-solid fa-user-shield mr-1.5 text-amber-500"></i>Citizen Hub
                     </button>
+                    <button onclick="switchView('driver')" data-view="driver" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+                        <i class="fa-solid fa-truck-steering-wheel mr-1.5 text-sky-500"></i>Driver (/driver)
+                    </button>
                 </nav>
 
                 <!-- Right Side Actions & Auth Badge -->
@@ -159,6 +162,9 @@
             </button>
             <button onclick="switchView('citizen'); toggleMobileMenu()" data-view="citizen" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
                 <i class="fa-solid fa-user-shield text-amber-500"></i> Citizen Dashboard
+            </button>
+            <button onclick="switchView('driver'); toggleMobileMenu()" data-view="driver" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-truck-steering-wheel text-sky-500"></i> Driver Tablet Hub (/driver)
             </button>
         </div>
     </header>
@@ -228,15 +234,18 @@
             </div>
 
             <!-- Quick Demo Bypass buttons -->
-            <div class="grid grid-cols-3 gap-2">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button type="button" onclick="quickLogin('citizen', this)" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
-                    👤 Citizen Demo
+                    👤 Citizen
                 </button>
                 <button type="button" onclick="quickLogin('municipal', this)" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
-                    🏛️ Municipal Demo
+                    🏛️ Municipal
                 </button>
                 <button type="button" onclick="quickLogin('admin', this)" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
-                    🛠️ Admin Demo
+                    🛠️ Admin
+                </button>
+                <button type="button" onclick="quickLogin('driver', this)" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    🚚 Driver
                 </button>
             </div>
         </div>
@@ -1407,6 +1416,11 @@
 
         </section>
 
+        <!-- VIEW 4: DRIVER TABLET DASHBOARD (ROUTE: /driver) -->
+        <section id="view-driver" class="view-section hidden p-2 sm:p-4 lg:p-6 max-w-7xl mx-auto space-y-4">
+            <div id="driverDashboardRoot"></div>
+        </section>
+
     </main>
 
     <!-- MODAL: Add Bin -->
@@ -1535,6 +1549,7 @@
                 <a href="#" onclick="switchView('admin'); return false;" class="hover:underline">Admin</a>
                 <a href="#" onclick="switchView('municipal'); return false;" class="hover:underline">Municipal</a>
                 <a href="#" onclick="switchView('citizen'); return false;" class="hover:underline">Citizen</a>
+                <a href="/driver" onclick="switchView('driver'); return false;" class="hover:underline text-sky-600 dark:text-sky-400 font-semibold">Driver</a>
             </div>
         </div>
     </footer>
@@ -1544,5 +1559,6 @@
     <script type="module" src="app.js"></script>
     <script type="module" src="MapComponent.jsx"></script>
     <script type="module" src="CitizenComponent.jsx"></script>
+    <script type="module" src="DriverDashboard.jsx"></script>
 </body>
 </html>

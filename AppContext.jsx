@@ -35,9 +35,54 @@ const INITIAL_BINS = [
     capacity: '1000L',
     wasteType: 'Organic',
     dailyRate: '145 kg/day',
-    baseFill: 88,
-    fillPct: 88,
-    status: 'Active',
+    baseFill: 94,
+    fillPct: 94,
+    status: 'Critical (Red)',
+    pos: [18.5220, 73.8549],
+    lastPickup: 'Today, 06:00 AM',
+    collected: false,
+  },
+  {
+    id: 'B-04',
+    name: 'Mandai Market',
+    sector: 'Ward 09 • High-Footfall Market',
+    capacity: '1200L',
+    wasteType: 'Mixed',
+    dailyRate: '140 kg/day',
+    baseFill: 91,
+    fillPct: 91,
+    status: 'Critical (Red)',
+    pos: [18.5193, 73.8530],
+    lastPickup: 'Yesterday, 04:30 PM',
+    collected: false,
+  },
+  {
+    id: 'B-06',
+    name: 'FC Road Night Zone',
+    sector: 'Ward 12 • Commercial Food Hub',
+    capacity: '1000L',
+    wasteType: 'Organic',
+    dailyRate: '160 kg/day',
+    baseFill: 97,
+    fillPct: 97,
+    status: 'Critical (Red)',
+    pos: [18.5184, 73.8566],
+    lastPickup: 'Yesterday, 10:00 PM',
+    collected: false,
+  },
+  {
+    id: 'B-08',
+    name: 'Hadapsar Terminal Stand',
+    sector: 'Ward 14 • Transit Hub',
+    capacity: '1500L',
+    wasteType: 'Mixed',
+    dailyRate: '180 kg/day',
+    baseFill: 92,
+    fillPct: 92,
+    status: 'Critical (Red)',
+    pos: [18.4966, 73.9416],
+    lastPickup: 'Yesterday, 06:00 PM',
+    collected: false,
   },
   {
     id: 'B-02',
@@ -46,31 +91,26 @@ const INITIAL_BINS = [
     capacity: '750L',
     wasteType: 'Dry',
     dailyRate: '95 kg/day',
-    baseFill: 62,
-    fillPct: 62,
-    status: 'Active',
+    baseFill: 42,
+    fillPct: 42,
+    status: 'Normal (Green)',
+    pos: [18.5074, 73.8151],
+    lastPickup: 'Today, 05:30 AM',
+    collected: true,
   },
   {
     id: 'B-03',
-    name: 'FC Road Commercial Hub',
-    sector: 'Ward 12 • High-Footfall Area',
-    capacity: '1000L',
-    wasteType: 'Mixed',
-    dailyRate: '160 kg/day',
-    baseFill: 78,
-    fillPct: 78,
-    status: 'Active',
-  },
-  {
-    id: 'B-04',
-    name: 'Karve Road Junction',
+    name: 'Karvenagar Junction',
     sector: 'Ward 09 • Residential Crossing',
     capacity: '500L',
-    wasteType: 'Hazardous',
+    wasteType: 'Organic',
     dailyRate: '45 kg/day',
-    baseFill: 45,
-    fillPct: 45,
-    status: 'Active',
+    baseFill: 38,
+    fillPct: 38,
+    status: 'Normal (Green)',
+    pos: [18.4893, 73.8202],
+    lastPickup: 'Today, 07:00 AM',
+    collected: true,
   },
 ];
 
@@ -245,6 +285,60 @@ class GlobalAppStore {
         }));
         this.syncDOM();
         return newTruck;
+      },
+
+      // 4. Driver Action: Mark bin collected, transition from Critical (Red) to Normal (Green), remove from route
+      markBinCollected: (binId) => {
+        let updatedTarget = null;
+        this.setState((prev) => {
+          const updatedBins = prev.bins.map((bin) => {
+            const matches = bin.id === binId || bin.id.replace('-', '') === String(binId).replace('-', '');
+            if (matches) {
+              updatedTarget = {
+                ...bin,
+                baseFill: 12,
+                fillPct: 12,
+                status: 'Normal (Green)',
+                collected: true,
+                lastPickup: 'Just now',
+              };
+              return updatedTarget;
+            }
+            return bin;
+          });
+
+          return {
+            bins: updatedBins,
+          };
+        });
+
+        // Also sync simulation state if window.state exists
+        if (typeof window !== 'undefined' && window.state && Array.isArray(window.state.bins)) {
+          window.state.bins.forEach((b) => {
+            if (b.id === binId || b.id.replace('-', '') === String(binId).replace('-', '')) {
+              b.fillPercent = 12;
+              b.status = 'ok';
+              b.urgency = 'low';
+              b.collected = true;
+            }
+          });
+        }
+
+        this.syncDOM();
+        return updatedTarget;
+      },
+
+      // Reset driver route collections
+      resetDriverRoute: () => {
+        this.setState({
+          bins: INITIAL_BINS.map((b) => ({ ...b })),
+        });
+        if (typeof window !== 'undefined' && window.state && Array.isArray(window.state.bins)) {
+          window.state.bins.forEach((b) => {
+            b.collected = false;
+          });
+        }
+        this.syncDOM();
       },
     };
   }
@@ -670,4 +764,6 @@ if (typeof window !== 'undefined') {
   window.resetSimulationInContext = () => appStore.actions.resetSimulation();
   window.addBinToContext = (b) => appStore.actions.addBin(b);
   window.addTruckToContext = (t) => appStore.actions.addTruck(t);
+  window.markBinCollectedInContext = (id) => appStore.actions.markBinCollected(id);
+  window.resetDriverRouteInContext = () => appStore.actions.resetDriverRoute();
 }
