@@ -869,23 +869,25 @@
       // Update authContainer badge
       const authC = document.getElementById('authContainer');
       if (authC) {
-          if (view === 'landing') {
+          const user = (window.authState && window.authState.currentUser) || null;
+          if (!user && view === 'landing') {
               authC.innerHTML = `
                   <button onclick="openLoginModal()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-md shadow-emerald-600/20 transition-all">
                       <i class="fa-solid fa-right-to-bracket"></i>
                       <span>Login / Portal</span>
                   </button>`;
           } else {
+              const activeRole = user ? user.role.toUpperCase() : (view === 'admin' ? 'ADMIN' : view === 'municipal' ? 'MUNICIPAL' : 'CITIZEN');
               const roleConfig = {
-                  admin: { label: 'Admin Hub', cls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' },
-                  municipal: { label: 'Municipal View', cls: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border-teal-200 dark:border-teal-800' },
-                  citizen: { label: 'Citizen Portal', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800' }
+                  ADMIN: { label: 'ADMIN', cls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' },
+                  MUNICIPAL: { label: 'MUNICIPAL', cls: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border-teal-200 dark:border-teal-800' },
+                  CITIZEN: { label: 'CITIZEN', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800' }
               };
-              const role = roleConfig[view] || { label: view, cls: 'bg-slate-100 text-slate-700 border-slate-200' };
+              const roleInfo = roleConfig[activeRole] || { label: activeRole, cls: 'bg-slate-100 text-slate-700 border-slate-200' };
               authC.innerHTML = `
-                  <div class="flex items-center gap-2">
-                      <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${role.cls} uppercase">${role.label}</span>
-                      <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg text-xs" title="Return to Home">
+                  <div class="flex items-center gap-2 animate-in fade-in duration-300">
+                      <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${roleInfo.cls} font-mono tracking-wider">${roleInfo.label}</span>
+                      <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg text-xs" title="Return to Home / Logout">
                           <i class="fa-solid fa-right-from-bracket"></i>
                       </button>
                   </div>`;
@@ -1003,63 +1005,93 @@
       }
   };
 
-  window.handleCitizenReportSubmit = function(e) {
-      e.preventDefault();
-      const binId = $('citizenBinSelect') ? $('citizenBinSelect').value : '';
-      const issue = $('citizenIssueType') ? $('citizenIssueType').value : 'Overflowing Waste';
-      const bin = state.bins.find(b => b.id === binId);
-      const locationName = bin ? bin.name : 'Ward 4 Station';
-
-      if (bin) {
-          bin.urgency = 'high';
-          bin.priorityReason = `Citizen Report: ${issue}`;
-          bin.priorityScore = Math.max(90, bin.priorityScore + 30);
-          bin.fillPercent = Math.max(85, bin.fillPercent + 20);
-          renderDashboard();
+  window.handleCitizenReportSubmit = async function(e) {
+      if (e) e.preventDefault();
+      const submitBtn = document.getElementById('btnSubmitCitizenReport') || (e.target && e.target.querySelector('button[type="submit"]'));
+      const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Submitting Report...</span>`;
       }
 
-      // Prepend new pending ticket card into "My Submitted Reports Status"
-      const reportsContainer = $('citizenMyReports');
-      if (reportsContainer) {
-          const ticketNum = Math.floor(105 + Math.random() * 20);
-          const card = document.createElement('div');
-          card.className = "p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 animate-in fade-in duration-300";
-          card.innerHTML = `
-              <div class="space-y-1">
-                  <div class="flex flex-wrap items-center gap-2">
-                      <span class="text-xs font-bold text-slate-900 dark:text-white">Ticket #${ticketNum}</span>
-                      <span class="text-xs text-slate-600 dark:text-slate-400">${issue} at ${locationName}</span>
+      try {
+          const binId = $('citizenBinSelect') ? $('citizenBinSelect').value : '';
+          const issue = $('citizenIssueType') ? $('citizenIssueType').value : 'Overflowing Waste';
+          const notes = $('citizenNotes') ? $('citizenNotes').value : '';
+          const bin = state.bins.find(b => b.id === binId);
+          const locationName = bin ? bin.name : 'Ward 4 Station';
+
+          // Await 1.5-second async backend promise (Firebase/simulated backend)
+          if (window.submitReportToBackend) {
+              await window.submitReportToBackend({
+                  binId,
+                  issue,
+                  locationName,
+                  notes,
+                  reportedBy: window.authState?.currentUser?.displayName || 'Alex Johnson'
+              });
+          } else {
+              await new Promise(r => setTimeout(r, 1500));
+          }
+
+          if (bin) {
+              bin.urgency = 'high';
+              bin.priorityReason = `Citizen Report: ${issue}`;
+              bin.priorityScore = Math.max(90, bin.priorityScore + 30);
+              bin.fillPercent = Math.max(85, bin.fillPercent + 20);
+              renderDashboard();
+          }
+
+          // Prepend new pending ticket card into "My Submitted Reports Status"
+          const reportsContainer = $('citizenMyReports');
+          if (reportsContainer) {
+              const ticketNum = Math.floor(105 + Math.random() * 20);
+              const card = document.createElement('div');
+              card.className = "p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 animate-in fade-in duration-300";
+              card.innerHTML = `
+                  <div class="space-y-1">
+                      <div class="flex flex-wrap items-center gap-2">
+                          <span class="text-xs font-bold text-slate-900 dark:text-white">Ticket #${ticketNum}</span>
+                          <span class="text-xs text-slate-600 dark:text-slate-400">${issue} at ${locationName}</span>
+                      </div>
+                      <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                          <i class="fa-regular fa-calendar-check text-[10px]"></i> Just now
+                      </div>
                   </div>
-                  <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
-                      <i class="fa-regular fa-calendar-check text-[10px]"></i> Just now
-                  </div>
-              </div>
-              <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex-shrink-0">
-                  Under Verification
-              </span>
-          `;
-          reportsContainer.prepend(card);
+                  <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex-shrink-0">
+                      Under Verification
+                  </span>
+              `;
+              reportsContainer.prepend(card);
+          }
+
+          // Increase pts by 50 (to 500 PTS) in React state & DOM
+          if (window.setGreenPoints) {
+              window.setGreenPoints(prev => prev + 50);
+          }
+          state.greenPoints = (state.greenPoints || 450) + 50;
+          updateGreenPointsUI();
+          window.dispatchEvent(new CustomEvent('citizen:add-points', { detail: { amount: 50 } }));
+
+          // Reset the form inputs and miniature preview
+          if (e.target) e.target.reset();
+          const thumb = $('uploadThumbnail');
+          const icon = $('uploadIcon');
+          const ut = $('uploadText');
+          if (thumb) { thumb.src = ''; thumb.classList.add('hidden'); }
+          if (icon) icon.classList.remove('hidden');
+          if (ut) ut.textContent = 'Click to select photo or capture';
+
+          // Trigger temporary green success banner at the top
+          showCitizenBanner("Report Verified & Submitted! +50 Green Points Added");
+      } catch (err) {
+          showCitizenBanner(`Submission failed: ${err.message || 'Error'}`);
+      } finally {
+          if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = originalHtml;
+          }
       }
-
-      // Increase pts by 50 (to 500 PTS) in React state & DOM
-      if (window.setGreenPoints) {
-          window.setGreenPoints(prev => prev + 50);
-      }
-      state.greenPoints = (state.greenPoints || 450) + 50;
-      updateGreenPointsUI();
-      window.dispatchEvent(new CustomEvent('citizen:add-points', { detail: { amount: 50 } }));
-
-      // Reset the form inputs and miniature preview
-      if (e.target) e.target.reset();
-      const thumb = $('uploadThumbnail');
-      const icon = $('uploadIcon');
-      const ut = $('uploadText');
-      if (thumb) { thumb.src = ''; thumb.classList.add('hidden'); }
-      if (icon) icon.classList.remove('hidden');
-      if (ut) ut.textContent = 'Click to select photo or capture';
-
-      // Trigger temporary green success banner at the top
-      showCitizenBanner("Report Verified & Submitted! +50 Green Points Added");
   };
 
   window.redeemReward = function(itemName, itemCost) {
@@ -1092,7 +1124,67 @@
       showCitizenBanner("E-Waste Pickup Scheduled for tomorrow 10:00 AM");
   };
 
-  // Auth mocks
+  // Async Route Generation with loading state
+  window.handleGenerateRouteWithLoading = async function(btn) {
+      const button = btn || document.getElementById('btnGenerateOptimalRoute');
+      const originalHtml = button ? button.innerHTML : '';
+      if (button) {
+          button.disabled = true;
+          button.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Calculating Route...</span>`;
+      }
+
+      try {
+          if (window.generateOptimalRouteBackend) {
+              await window.generateOptimalRouteBackend('Ward 4');
+          } else {
+              await new Promise(r => setTimeout(r, 1500));
+          }
+
+          generateEcoRoute();
+          if (window.setMapShowRoute) window.setMapShowRoute(true);
+          window.dispatchEvent(new CustomEvent('ecoroute:show'));
+          showSimAlert("✅ Optimal EcoRoute generated for Ward 4 (52.6% Distance Saved)!");
+      } catch (err) {
+          showSimAlert(`❌ Route calculation failed: ${err.message || 'Error'}`);
+      } finally {
+          if (button) {
+              button.disabled = false;
+              button.innerHTML = originalHtml;
+          }
+      }
+  };
+
+  // Global Auth handlers with 1.5s async loading state
+  async function performLoginWithLoading(role, email, btn) {
+      const button = btn || document.getElementById('btnLoginSubmit');
+      const originalHtml = button ? button.innerHTML : '';
+      if (button) {
+          button.disabled = true;
+          button.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Authenticating...</span>`;
+      }
+
+      try {
+          const user = window.authenticateUser 
+              ? await window.authenticateUser(role, email)
+              : await new Promise(r => setTimeout(() => r({ role: (role || 'CITIZEN').toUpperCase() }), 1500));
+
+          window.closeLoginModal();
+          window.switchView(role.toLowerCase());
+          if (window.showSimAlert) {
+              window.showSimAlert(`✅ Authenticated successfully as ${user.role}!`);
+          }
+      } catch (err) {
+          if (window.showSimAlert) {
+              window.showSimAlert(`❌ Authentication failed: ${err.message || 'Error'}`);
+          }
+      } finally {
+          if (button) {
+              button.disabled = false;
+              button.innerHTML = originalHtml;
+          }
+      }
+  }
+
   window.openLoginModal = function() {
       const m = document.getElementById('loginModal');
       if (m) m.classList.remove('hidden');
@@ -1101,13 +1193,32 @@
       const m = document.getElementById('loginModal');
       if (m) m.classList.add('hidden');
   };
-  window.setAuthRole = function(role) { window.authModalRole = role; };
-  window.quickLogin = function(role) {
-      window.closeLoginModal();
-      window.switchView(role);
+  window.setAuthRole = function(role) { 
+      window.authModalRole = role;
+      document.querySelectorAll('.role-tab').forEach(t => {
+          t.className = 'role-tab text-xs font-semibold py-2 rounded-lg transition-all text-slate-600 dark:text-slate-400';
+      });
+      const activeTab = document.getElementById(`roleBtn-${role}`);
+      if (activeTab) {
+          activeTab.className = 'role-tab text-xs font-semibold py-2 rounded-lg transition-all bg-white dark:bg-slate-700 text-emerald-600 shadow-sm';
+      }
+  };
+  window.quickLogin = async function(role, btn) {
+      await performLoginWithLoading(role, `${role.toLowerCase()}@ecoroute.gov`, btn);
+  };
+  window.handleLoginSubmit = async function(e) {
+      if (e) e.preventDefault();
+      const role = window.authModalRole || 'municipal';
+      const emailInput = document.getElementById('loginUsername');
+      const email = emailInput ? emailInput.value : '';
+      const submitBtn = (e.target && e.target.querySelector('button[type="submit"]')) || document.getElementById('btnLoginSubmit');
+      await performLoginWithLoading(role, email, submitBtn);
   };
   window.logout = function() {
+      if (window.authState) window.authState.logout();
+      window.currentUser = null;
       window.switchView('landing');
+      if (window.showSimAlert) window.showSimAlert('🔒 Successfully logged out of session.');
   };
   window.requireRoleView = function(role) {
       window.switchView(role);
@@ -1119,13 +1230,7 @@
       if (m) m.classList.toggle('hidden');
   };
   window.toggleLang = function(lang) {
-      // Placeholder - multilingual simulation
       console.log('Language set to:', lang);
-  };
-  window.handleLoginSubmit = function(e) {
-      e.preventDefault();
-      const role = window.authModalRole || 'municipal';
-      window.quickLogin(role);
   };
   window.runDemoSequence = function() {
       window.quickLogin('municipal');

@@ -216,7 +216,7 @@
                     <a href="#" class="text-emerald-600 font-semibold hover:underline">Forgot?</a>
                 </div>
 
-                <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 text-sm transition-all flex items-center justify-center gap-2">
+                <button type="submit" id="btnLoginSubmit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 text-sm transition-all flex items-center justify-center gap-2">
                     <span>Login to Dashboard</span>
                     <i class="fa-solid fa-arrow-right"></i>
                 </button>
@@ -229,13 +229,13 @@
 
             <!-- Quick Demo Bypass buttons -->
             <div class="grid grid-cols-3 gap-2">
-                <button type="button" onclick="quickLogin('citizen')" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+                <button type="button" onclick="quickLogin('citizen', this)" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
                     👤 Citizen Demo
                 </button>
-                <button type="button" onclick="quickLogin('municipal')" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+                <button type="button" onclick="quickLogin('municipal', this)" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
                     🏛️ Municipal Demo
                 </button>
-                <button type="button" onclick="quickLogin('admin')" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+                <button type="button" onclick="quickLogin('admin', this)" class="px-2 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
                     🛠️ Admin Demo
                 </button>
             </div>
@@ -799,8 +799,8 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <button onclick="generateEcoRoute(); if (window.setMapShowRoute) window.setMapShowRoute(true);" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2">
-                        <i class="fa-solid fa-route"></i> Generate Optimal Route
+                    <button id="btnGenerateOptimalRoute" onclick="handleGenerateRouteWithLoading(this)" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-2xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-route"></i> <span>Generate Optimal Route</span>
                     </button>
                     <button onclick="window.print()" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-2xl transition-all flex items-center gap-2">
                         <i class="fa-solid fa-file-pdf text-rose-500"></i> Export PDF Summary
@@ -1233,7 +1233,7 @@
                             <textarea id="citizenNotes" rows="2" placeholder="e.g. Bin overflowing near Market Gate 2..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
                         </div>
 
-                        <button type="submit" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2">
+                        <button type="submit" id="btnSubmitCitizenReport" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2">
                             <i class="fa-solid fa-paper-plane"></i>
                             <span>Submit Citizen Report</span>
                         </button>
@@ -1500,6 +1500,7 @@
         </div>
     </footer>
 
+    <script type="module" src="firebase.js"></script>
     <script type="module" src="data.js"></script>
     <script type="module" src="app.js"></script>
     <script type="module" src="MapComponent.jsx"></script>
