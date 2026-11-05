@@ -33,6 +33,7 @@
     ecoRoute: null,
     greenPoints: 450,
   };
+  window.state = state;
 
   function updateGreenPointsUI() {
     const el = $('citizenPoints');
@@ -1167,9 +1168,95 @@ window.updateParamThreshold = function(val) {
 };
 
 window.saveAdminParams = function() {
-  alert('Admin system threshold parameters updated successfully.');
+  const banner = document.getElementById('adminNotificationBanner');
+  if (banner) {
+    banner.classList.remove('hidden');
+    clearTimeout(window._adminBannerTimer);
+    window._adminBannerTimer = setTimeout(() => {
+      banner.classList.add('hidden');
+    }, 4500);
+  }
+  if (window.showSimAlert) {
+    window.showSimAlert('✅ System thresholds and emission factors saved successfully!');
+  }
+};
+
+window.addNewAdminBin = function() {
+  const tbody = document.getElementById('adminBinTableBody');
+  if (tbody) {
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors animate-in fade-in duration-300';
+    tr.innerHTML = `
+      <td class="p-3">
+          <div class="font-bold text-slate-900 dark:text-white">B-26 • Deccan Gymkhana</div>
+          <div class="text-[11px] text-slate-400">Ward 04 • High-Priority Sector</div>
+      </td>
+      <td class="p-3 font-mono font-semibold text-slate-700 dark:text-slate-300">1000L</td>
+      <td class="p-3">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              Organic
+          </span>
+      </td>
+      <td class="p-3 font-mono text-slate-600 dark:text-slate-400">85%</td>
+      <td class="p-3">
+          <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+              Active
+          </span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // Update registry counter
+  const countEl = document.getElementById('adminBinCount');
+  if (countEl) {
+    const current = parseInt(countEl.textContent, 10) || 25;
+    countEl.textContent = current + 1;
+  }
+
+  // Update simulation state
+  if (window.state && window.state.bins) {
+    window.state.bins.push({
+      id: 'B-26',
+      name: 'Deccan Gymkhana',
+      capacityL: 1000,
+      wasteType: 'Organic',
+      fillPercent: 85,
+      areaType: 'Commercial',
+      status: 'urgent',
+      urgency: 'high',
+      dailyGenerationRate: 85
+    });
+  }
+
+  if (window.showSimAlert) {
+    window.showSimAlert('✅ Added B-26 (Deccan Gymkhana | 1000L | Organic | 85% | Active) to Managed Bins registry.');
+  }
+};
+
+window.openAddBinModal = window.addNewAdminBin;
+
+window.handleCreateBin = function(e) {
+  if (e) e.preventDefault();
+  window.addNewAdminBin();
+  const m = document.getElementById('addBinModal');
+  if (m) m.classList.add('hidden');
+};
+
+window.closeAddBinModal = function() {
+  const m = document.getElementById('addBinModal');
+  if (m) m.classList.add('hidden');
+};
+
+window.triggerBulkImport = function() {
+  if (window.showSimAlert) {
+    window.showSimAlert('📂 Bulk CSV Import: Synchronized 25 telemetry streams from municipal sensor grid.');
+  }
 };
 
 window.openAddTruckModal = function() {
-  alert('Truck Provisioning: Municipal fleet expansion requested.');
+  if (window.showSimAlert) {
+    window.showSimAlert('🚛 Truck Provisioning: Dispatched request for new municipal fleet vehicle.');
+  }
 };
+

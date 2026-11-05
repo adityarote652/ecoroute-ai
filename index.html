@@ -509,7 +509,7 @@
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Configure bin database, fleet trucks, conversion metrics, and view system audit logs.</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="openAddBinModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                    <button onclick="addNewAdminBin()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5">
                         <i class="fa-solid fa-plus"></i> Add New Bin
                     </button>
                     <button onclick="triggerBulkImport()" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5">
@@ -624,6 +624,12 @@
                     <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
                         <i class="fa-solid fa-gears text-indigo-500"></i> System Thresholds & Formula Settings
                     </h3>
+
+                    <!-- Temporary Green Notification Banner -->
+                    <div id="adminNotificationBanner" class="hidden p-3.5 rounded-2xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in duration-200 shadow-sm">
+                        <i class="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400 text-base flex-shrink-0"></i>
+                        <span>System thresholds and emission factors saved successfully!</span>
+                    </div>
 
                     <div class="space-y-4">
                         <div>
