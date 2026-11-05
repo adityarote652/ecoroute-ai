@@ -826,6 +826,46 @@
       const tgt = document.getElementById('view-' + view);
       if (tgt) tgt.classList.remove('hidden');
       window.scrollTo(0, 0);
+
+      // Update active nav styling across desktop and mobile menus
+      document.querySelectorAll('#desktopNav button, #mobileMenu button').forEach(btn => {
+          const isMatch = btn.getAttribute('data-view') === view || (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(`switchView('${view}')`));
+          if (isMatch) {
+              btn.classList.add('active-nav');
+          } else {
+              btn.classList.remove('active-nav');
+          }
+      });
+
+      // Update authContainer badge
+      const authC = document.getElementById('authContainer');
+      if (authC) {
+          if (view === 'landing') {
+              authC.innerHTML = `
+                  <button onclick="openLoginModal()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-md shadow-emerald-600/20 transition-all">
+                      <i class="fa-solid fa-right-to-bracket"></i>
+                      <span>Login / Portal</span>
+                  </button>`;
+          } else {
+              const roleConfig = {
+                  admin: { label: 'Admin Hub', cls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800' },
+                  municipal: { label: 'Municipal View', cls: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border-teal-200 dark:border-teal-800' },
+                  citizen: { label: 'Citizen Portal', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800' }
+              };
+              const role = roleConfig[view] || { label: view, cls: 'bg-slate-100 text-slate-700 border-slate-200' };
+              authC.innerHTML = `
+                  <div class="flex items-center gap-2">
+                      <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${role.cls} uppercase">${role.label}</span>
+                      <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg text-xs" title="Return to Home">
+                          <i class="fa-solid fa-right-from-bracket"></i>
+                      </button>
+                  </div>`;
+          }
+      }
+
+      if (view === 'municipal') {
+          renderDashboard();
+      }
   }
 
   function init() {
@@ -917,35 +957,12 @@
   window.quickLogin = function(role) {
       window.closeLoginModal();
       window.switchView(role);
-      
-      const authC = document.getElementById('authContainer');
-      if (authC) {
-          authC.innerHTML = `
-              <div class="flex items-center gap-2">
-                  <span class="px-2.5 py-1 rounded-full text-xs font-bold border bg-indigo-100 text-indigo-700 uppercase">${role}</span>
-                  <button onclick="logout()" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg text-xs" title="Logout">
-                      <i class="fa-solid fa-right-from-bracket"></i>
-                  </button>
-              </div>`;
-      }
-      
-      if (role === 'municipal') renderDashboard();
-      if (role === 'citizen' && window.mountCitizenMap) window.mountCitizenMap();
   };
   window.logout = function() {
       window.switchView('landing');
-      const authC = document.getElementById('authContainer');
-      if (authC) {
-          authC.innerHTML = `
-              <button onclick="openLoginModal()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-md shadow-emerald-600/20 transition-all">
-                  <i class="fa-solid fa-right-to-bracket"></i>
-                  <span>Login / Portal</span>
-              </button>`;
-      }
   };
   window.requireRoleView = function(role) {
-      window.setAuthRole(role);
-      window.openLoginModal();
+      window.switchView(role);
   };
 
   // UI utility stubs

@@ -106,16 +106,16 @@
 
                 <!-- Navigation Links -->
                 <nav class="hidden md:flex items-center space-x-1" id="desktopNav">
-                    <button onclick="switchView('landing')" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 active-nav">
+                    <button onclick="switchView('landing')" data-view="landing" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 active-nav">
                         <i class="fa-solid fa-house mr-1.5 text-emerald-600"></i>Home
                     </button>
-                    <button onclick="requireRoleView('admin')" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+                    <button onclick="switchView('admin')" data-view="admin" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
                         <i class="fa-solid fa-sliders mr-1.5 text-indigo-500"></i>Admin Hub
                     </button>
-                    <button onclick="requireRoleView('municipal')" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+                    <button onclick="switchView('municipal')" data-view="municipal" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
                         <i class="fa-solid fa-chart-line mr-1.5 text-teal-500"></i>Municipal Dashboard
                     </button>
-                    <button onclick="requireRoleView('citizen')" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
+                    <button onclick="switchView('citizen')" data-view="citizen" class="nav-btn px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200">
                         <i class="fa-solid fa-user-shield mr-1.5 text-amber-500"></i>Citizen Hub
                     </button>
                 </nav>
@@ -148,16 +148,16 @@
 
         <!-- Mobile Drawer -->
         <div id="mobileMenu" class="hidden md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-2 pb-4 space-y-2">
-            <button onclick="switchView('landing'); toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
+            <button onclick="switchView('landing'); toggleMobileMenu()" data-view="landing" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
                 <i class="fa-solid fa-house text-emerald-600"></i> Home
             </button>
-            <button onclick="requireRoleView('admin'); toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
+            <button onclick="switchView('admin'); toggleMobileMenu()" data-view="admin" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
                 <i class="fa-solid fa-sliders text-indigo-500"></i> Administration Dashboard
             </button>
-            <button onclick="requireRoleView('municipal'); toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
+            <button onclick="switchView('municipal'); toggleMobileMenu()" data-view="municipal" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
                 <i class="fa-solid fa-chart-line text-teal-500"></i> Municipal Dashboard
             </button>
-            <button onclick="requireRoleView('citizen'); toggleMobileMenu()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
+            <button onclick="switchView('citizen'); toggleMobileMenu()" data-view="citizen" class="w-full text-left px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
                 <i class="fa-solid fa-user-shield text-amber-500"></i> Citizen Dashboard
             </button>
         </div>
@@ -269,11 +269,11 @@
                     </p>
 
                     <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
-                        <button onclick="quickLogin('municipal')" class="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-2xl shadow-xl shadow-emerald-500/30 transition-all flex items-center gap-3 text-base">
+                        <button onclick="switchView('municipal')" class="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-2xl shadow-xl shadow-emerald-500/30 transition-all flex items-center gap-3 text-base">
                             <i class="fa-solid fa-route text-lg"></i>
                             <span>Launch Route Optimization Engine</span>
                         </button>
-                        <button onclick="quickLogin('citizen')" class="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-semibold rounded-2xl transition-all flex items-center gap-3 text-base">
+                        <button onclick="switchView('citizen')" class="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-semibold rounded-2xl transition-all flex items-center gap-3 text-base">
                             <i class="fa-solid fa-camera-retro text-amber-400"></i>
                             <span>Report Overflow Bin</span>
                         </button>
@@ -452,7 +452,7 @@
                                 System-level control center. Manage bin registries, processing facilities, truck fleet capacities, driver shifts, audit logs, and prediction formula parameters.
                             </p>
                         </div>
-                        <button onclick="quickLogin('admin')" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+                        <button onclick="switchView('admin')" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
                             <span>Open Admin Hub</span>
                             <i class="fa-solid fa-arrow-right"></i>
                         </button>
@@ -469,7 +469,7 @@
                                 Official city view with Leaflet interactive bin map, dynamic prediction calculation, selective 80%+ route solver, truck payload tracker, and carbon savings analytics.
                             </p>
                         </div>
-                        <button onclick="quickLogin('municipal')" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+                        <button onclick="switchView('municipal')" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
                             <span>Open Municipal View</span>
                             <i class="fa-solid fa-arrow-right"></i>
                         </button>
@@ -486,7 +486,7 @@
                                 Public portal to view nearby bin fill levels, submit photo overflow complaints, earn Green Points, claim tax discounts, and track live truck routes.
                             </p>
                         </div>
-                        <button onclick="quickLogin('citizen')" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
+                        <button onclick="switchView('citizen')" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
                             <span>Open Citizen Portal</span>
                             <i class="fa-solid fa-arrow-right"></i>
                         </button>
@@ -1472,10 +1472,10 @@
                 <span class="font-bold text-slate-800 dark:text-slate-200">EcoRoute AI Prototype</span> - Smart Municipal Waste Collection System
             </div>
             <div class="flex items-center gap-4">
-                <a href="#" onclick="switchView('landing')" class="hover:underline">Home</a>
-                <a href="#" onclick="requireRoleView('admin')" class="hover:underline">Admin</a>
-                <a href="#" onclick="requireRoleView('municipal')" class="hover:underline">Municipal</a>
-                <a href="#" onclick="requireRoleView('citizen')" class="hover:underline">Citizen</a>
+                <a href="#" onclick="switchView('landing'); return false;" class="hover:underline">Home</a>
+                <a href="#" onclick="switchView('admin'); return false;" class="hover:underline">Admin</a>
+                <a href="#" onclick="switchView('municipal'); return false;" class="hover:underline">Municipal</a>
+                <a href="#" onclick="switchView('citizen'); return false;" class="hover:underline">Citizen</a>
             </div>
         </div>
     </footer>

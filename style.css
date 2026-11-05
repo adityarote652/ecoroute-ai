@@ -123,3 +123,15 @@ body::after {
 .thin-scroll { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
 .thin-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
 .thin-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+
+/* Active Navigation Item Styling */
+.active-nav {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  color: #059669 !important;
+  font-weight: 700 !important;
+}
+.dark .active-nav {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+}
