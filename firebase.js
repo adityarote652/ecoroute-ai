@@ -2,35 +2,28 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, doc, setDoc } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
-// Standard Firebase Configuration
-// Values are loaded from .env (NEVER hardcode secrets here).
-// See .env.example for the required variable names.
+// ─── Firebase Configuration ───────────────────────────────────────────────────
+// All values are injected at build-time by Vite from the .env file.
+// NEVER hardcode credentials here — the .env file is gitignored.
+// See .env.example for the list of required variable names.
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase App instance
+// ─── Initialize Firebase (singleton-safe) ─────────────────────────────────────
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-let db = null;
-let auth = null;
+// ─── Firestore Database ────────────────────────────────────────────────────────
+export const db = getFirestore(app);
 
-try {
-  db = getFirestore(app);
-} catch (e) {
-  console.info("Firestore initialized with local simulated service layer.");
-}
-
-try {
-  auth = getAuth(app);
-} catch (e) {
-  console.info("Firebase Auth initialized with simulated service layer.");
-}
+// ─── Firebase Auth ─────────────────────────────────────────────────────────────
+export const auth = getAuth(app);
 
 // Global Auth State Context
 export const authState = {
@@ -252,4 +245,4 @@ window.fetchBinsFromDB = fetchBinsFromDB;
 window.generateOptimalRouteBackend = generateOptimalRouteBackend;
 window.updateAuthNavbarUI = updateAuthNavbarUI;
 
-export { app, db, auth };
+export { app };
