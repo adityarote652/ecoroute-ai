@@ -31,7 +31,13 @@
     selectedBinId: null,
     routeActive: false,
     ecoRoute: null,
+    greenPoints: 450,
   };
+
+  function updateGreenPointsUI() {
+    const el = $('citizenPoints');
+    if (el) el.textContent = `${state.greenPoints} PTS`;
+  }
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // HELPERS
@@ -879,6 +885,7 @@
     renderDashboard();
     updateClock();
     setInterval(updateClock, 1000);
+    updateGreenPointsUI();
     
     // Populate Citizen Select
     const cb = $('citizenBinSelect');
@@ -938,42 +945,72 @@
       }
   };
   
+  window.previewUpload = function(input) {
+      if (input.files && input.files[0]) {
+          const text = $('uploadText');
+          if (text) text.textContent = `📷 ${input.files[0].name}`;
+      }
+  };
+
   window.handleCitizenReportSubmit = function(e) {
       e.preventDefault();
-      const binId = $('citizenBinSelect').value;
-      const issue = $('citizenIssueType').value;
+      const binId = $('citizenBinSelect') ? $('citizenBinSelect').value : '';
+      const issue = $('citizenIssueType') ? $('citizenIssueType').value : 'Overflowing Waste';
       const bin = state.bins.find(b => b.id === binId);
+      const locationName = bin ? bin.name : 'Ward 4 Station';
+
       if (bin) {
           bin.urgency = 'high';
           bin.priorityReason = `Citizen Report: ${issue}`;
           bin.priorityScore = Math.max(90, bin.priorityScore + 30);
           bin.fillPercent = Math.max(85, bin.fillPercent + 20);
           renderDashboard();
+      }
 
-          const reportsContainer = $('citizenMyReports');
-          if (reportsContainer) {
-              const ticketNum = Math.floor(105 + Math.random() * 20);
-              const card = document.createElement('div');
-              card.className = "p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4";
-              card.innerHTML = `
-                  <div class="space-y-1">
-                      <div class="flex flex-wrap items-center gap-2">
-                          <span class="text-xs font-bold text-slate-900 dark:text-white">Ticket #${ticketNum}</span>
-                          <span class="text-xs text-slate-600 dark:text-slate-400">${issue} at ${bin.name}</span>
-                      </div>
-                      <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
-                          <i class="fa-regular fa-calendar-check text-[10px]"></i> Just now
-                      </div>
+      // Append new ticket card to "My Submitted Reports Status"
+      const reportsContainer = $('citizenMyReports');
+      if (reportsContainer) {
+          const ticketNum = Math.floor(105 + Math.random() * 20);
+          const card = document.createElement('div');
+          card.className = "p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 animate-in fade-in duration-300";
+          card.innerHTML = `
+              <div class="space-y-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                      <span class="text-xs font-bold text-slate-900 dark:text-white">Ticket #${ticketNum}</span>
+                      <span class="text-xs text-slate-600 dark:text-slate-400">${issue} at ${locationName}</span>
                   </div>
-                  <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex-shrink-0">
-                      Under Verification
-                  </span>
-              `;
-              reportsContainer.prepend(card);
-          }
+                  <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                      <i class="fa-regular fa-calendar-check text-[10px]"></i> Just now
+                  </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex-shrink-0">
+                  Under Verification
+              </span>
+          `;
+          reportsContainer.prepend(card);
+      }
 
-          alert(`Simulation Event: Citizen reported ${bin.name} (${bin.id}).\nIts urgency was raised to HIGH.`);
-          e.target.reset();
+      // Add +50 to greenPoints
+      state.greenPoints = (state.greenPoints || 450) + 50;
+      updateGreenPointsUI();
+
+      // Reset the form inputs
+      if (e.target) e.target.reset();
+      const ut = $('uploadText');
+      if (ut) ut.textContent = 'Click to select photo or capture';
+
+      showSimAlert(`✅ Citizen report submitted! +50 PTS added to your wallet (Total: ${state.greenPoints} PTS).`);
+  };
+
+  window.redeemReward = function(itemName, itemCost) {
+      if ((state.greenPoints || 450) >= itemCost) {
+          state.greenPoints -= itemCost;
+          updateGreenPointsUI();
+          alert("Voucher redeemed successfully!");
+          showSimAlert(`🎉 Voucher redeemed successfully! -${itemCost} PTS deducted. Remaining: ${state.greenPoints} PTS.`);
+      } else {
+          alert(`Insufficient Green Points! You have ${state.greenPoints} PTS, but this item requires ${itemCost} PTS.`);
+          showSimAlert(`⚠️ Insufficient Green Points! Need ${itemCost} PTS.`);
       }
   };
 
