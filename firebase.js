@@ -135,43 +135,41 @@ export async function updateUserProfilePointsInDB(pointsToAdd = 50) {
 }
 
 // Async function uploadReportToDB()
-// Pushes report to Firestore collection "citizen_reports" (or simulates with 2-second setTimeout)
-// and updates the user's DB profile with +50 points
+// Pushes report to Firestore collection "citizen_reports" with error handling
 export async function uploadReportToDB(reportData = {}) {
   const collectionName = 'citizen_reports';
+  const timestamp = reportData.timestamp || new Date().toISOString();
+  
   const payload = {
-    ...reportData,
-    status: 'Under Verification',
+    nearestBin: reportData.nearestBin || reportData.locationName || reportData.location || 'Shivajinagar Market',
+    issueCategory: reportData.issueCategory || reportData.issue || 'Overflowing Waste',
+    additionalDetails: reportData.additionalDetails || reportData.notes || '',
+    timestamp,
+    title: reportData.title || `${reportData.issueCategory || reportData.issue || 'Overflowing Waste'} at ${reportData.nearestBin || reportData.locationName || 'Ward Station'}`,
+    status: reportData.status || 'Pending',
+    priority: reportData.priority || (reportData.issueCategory === 'Overflowing Waste' ? 'High Priority' : 'Moderate Risk'),
+    reportedBy: reportData.reportedBy || window.authState?.currentUser?.displayName || 'Citizen Reporter',
     rewardPoints: 50,
-    createdAt: new Date().toISOString()
+    createdAt: timestamp,
+    ...reportData,
   };
-
-  let reportId = 'REP-' + Date.now().toString(36).toUpperCase();
 
   try {
-    if (db) {
-      const collRef = collection(db, collectionName);
-      // Attempt real Firestore insert with timeout fallback to ensure 2s smooth feedback
-      const savePromise = addDoc(collRef, payload);
-      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ id: reportId, simulated: true }), 2000));
-      const res = await Promise.race([savePromise, timeoutPromise]);
-      if (res && res.id) reportId = res.id;
-    } else {
-      // 2-second simulated delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    }
+    const collRef = collection(db, collectionName);
+    const docRef = await addDoc(collRef, payload);
+    console.info("Report created in Firestore citizen_reports with ID:", docRef.id);
+    
+    // Add +50 points to user's DB profile
+    await updateUserProfilePointsInDB(50);
+
+    return {
+      id: docRef.id,
+      ...payload
+    };
   } catch (err) {
-    console.info("Firestore live push fallback to simulated 2s delay:", err);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    console.error("Firestore database write failed in uploadReportToDB:", err);
+    throw err;
   }
-
-  // Add +50 points to user's DB profile
-  await updateUserProfilePointsInDB(50);
-
-  return {
-    id: reportId,
-    ...payload
-  };
 }
 
 // Backward-compatible alias

@@ -1054,12 +1054,15 @@
 
   // Async Citizen Report Submission to DB with try/catch, loading spinner, and +50 DB points
   async function uploadReportToDB(e) {
+      if (window.submitCitizenReport && window.submitCitizenReport !== uploadReportToDB) {
+          return await window.submitCitizenReport(e);
+      }
       if (e && e.preventDefault) e.preventDefault();
       const submitBtn = document.getElementById('btnSubmitCitizenReport') || (e && e.target && e.target.querySelector('button[type="submit"]'));
       const originalHtml = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
           submitBtn.disabled = true;
-          submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Uploading to DB...</span>`;
+          submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Saving to Firestore...</span>`;
       }
 
       try {
@@ -1071,6 +1074,10 @@
           const locationName = bin ? bin.name : (binSelect?.options[binSelect.selectedIndex]?.text || 'Ward 4 Station');
 
           const reportPayload = {
+              nearestBin: locationName,
+              issueCategory: issue,
+              additionalDetails: notes,
+              timestamp: new Date().toISOString(),
               binId,
               issue,
               locationName,
@@ -1079,7 +1086,7 @@
               userUid: window.authState?.currentUser?.uid || 'user_guest'
           };
 
-          // Push data to Firestore collection "citizen_reports" (or simulate with a 2-second setTimeout)
+          // Push data to Firestore collection "citizen_reports"
           let backendResult = null;
           if (window.uploadReportToDBBackend) {
               backendResult = await window.uploadReportToDBBackend(reportPayload);

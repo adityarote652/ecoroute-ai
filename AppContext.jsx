@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { db } from './firebase.js';
 
 // ── Initial State Seed Data ──────────────────────────────────────────────────
 const INITIAL_REPORTS = [
@@ -415,52 +417,193 @@ export function useApp() {
   return { ...state, ...appStore.actions };
 }
 
-// ── 1. Citizen Complaint Oversight React Component ──────────────────────────
+// ── 1. Citizen Complaint Oversight React Component (Live Firestore) ─────────
 export function MunicipalComplaintsPanel() {
-  const { citizenReports, dispatchComplaint } = useApp();
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+
+    try {
+      if (!db) {
+        console.error("Firestore db instance is not initialized.");
+        setLoading(false);
+        return;
+      }
+
+      const collRef = collection(db, 'citizen_reports');
+
+      unsubscribe = onSnapshot(
+        collRef,
+        (snapshot) => {
+          try {
+            const list = [];
+            snapshot.forEach((docSnap) => {
+              const data = docSnap.data();
+              list.push({
+                id: docSnap.id,
+                ...data,
+              });
+            });
+
+            // Sort newest first by timestamp or createdAt
+            list.sort((a, b) => {
+              const tA = new Date(a.timestamp || a.createdAt || 0).getTime();
+              const tB = new Date(b.timestamp || b.createdAt || 0).getTime();
+              return tB - tA;
+            });
+
+            setReports(list);
+            setLoading(false);
+
+            // Update pending complaints count badge in DOM
+            const pendingCountEl = document.getElementById('complaintPendingCount');
+            if (pendingCountEl) {
+              const pendingCount = list.filter(
+                (r) => r.status !== 'Dispatched to TR-01' && r.status !== 'Resolved'
+              ).length;
+              pendingCountEl.textContent = `${pendingCount} Pending`;
+            }
+          } catch (processErr) {
+            console.error("Error processing citizen_reports snapshot data:", processErr);
+          }
+        },
+        (error) => {
+          console.error("Firestore onSnapshot error on citizen_reports collection:", error);
+          setLoading(false);
+        }
+      );
+    } catch (err) {
+      console.error("Failed to establish real-time listener for citizen_reports:", err);
+      setLoading(false);
+    }
+
+    return () => {
+      try {
+        if (typeof unsubscribe === 'function') {
+          unsubscribe();
+        }
+      } catch (err) {
+        console.error("Error unsubscribing from citizen_reports listener:", err);
+      }
+    };
+  }, []);
+
+  const handleDispatch = async (reportId) => {
+    try {
+      if (db) {
+        const reportRef = doc(db, 'citizen_reports', reportId);
+        await updateDoc(reportRef, { status: 'Dispatched to TR-01' });
+      }
+    } catch (err) {
+      console.error("Error updating complaint status in Firestore:", err);
+    }
+
+    // Local state fallback / optimistic update
+    setReports((prev) =>
+      prev.map((r) =>
+        r.id === reportId ? { ...r, status: 'Dispatched to TR-01' } : r
+      )
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 text-center text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+        <i className="fa-solid fa-spinner fa-spin mr-2 text-emerald-500 text-sm"></i>
+        <span>Connecting to Firestore &amp; syncing live citizen complaints...</span>
+      </div>
+    );
+  }
+
+  if (reports.length === 0) {
+    return (
+      <div className="p-8 text-center text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+        <i className="fa-solid fa-inbox text-3xl text-slate-300 dark:text-slate-600 block"></i>
+        <div className="font-semibold text-slate-700 dark:text-slate-300">No citizen complaints currently logged in Firestore.</div>
+        <div className="text-[11px] text-slate-400">
+          Reports submitted via the Citizen Hub will appear here in real time.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
-      {citizenReports.map((report) => {
+      {reports.map((report) => {
         const isDispatched = report.status === 'Dispatched to TR-01';
+        const issue = report.issueCategory || report.issue || 'Waste Issue';
+        const binLocation = report.nearestBin || report.locationName || report.location || 'Ward Station';
+        const title = report.title || `${issue} at ${binLocation}`;
+        const priority =
+          report.priority ||
+          (issue === 'Overflowing Waste' ? 'High Priority' : 'Moderate Risk');
+        const reporter = report.reportedBy || 'Citizen Reporter';
+        const details = report.additionalDetails || report.notes;
+
+        let timeLabel = 'Just now';
+        if (report.timestamp) {
+          try {
+            const date = new Date(report.timestamp);
+            timeLabel = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          } catch (e) {
+            timeLabel = report.timestamp;
+          }
+        } else if (report.time) {
+          timeLabel = report.time;
+        }
 
         return (
           <div
             key={report.id}
             className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all animate-in fade-in duration-300"
           >
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-900 dark:text-white">
-                  {report.title}
+            <div className="space-y-1 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  {title}
                 </span>
                 <span
                   className={`complaint-badge px-2 py-0.5 rounded-full text-[10px] font-bold ${
                     isDispatched
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
-                      : report.priority === 'High Priority'
+                      : priority === 'High Priority'
                       ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
                       : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
                   }`}
                 >
-                  {isDispatched ? 'Dispatched to TR-01' : report.priority}
+                  {isDispatched ? 'Dispatched to TR-01' : priority}
                 </span>
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Reported by {report.reportedBy} • {report.location} • {report.time}
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-1.5">
+                <span>Reported by <strong>{reporter}</strong></span>
+                <span>•</span>
+                <span>{binLocation}</span>
+                <span>•</span>
+                <span className="font-mono text-[10px]">{timeLabel}</span>
               </div>
+              {details && (
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800/80 p-2 rounded-xl border border-slate-200 dark:border-slate-700/60 mt-1 italic">
+                  "{details}"
+                </p>
+              )}
             </div>
 
             <button
-              onClick={() => dispatchComplaint(report.id)}
+              onClick={() => handleDispatch(report.id)}
               disabled={isDispatched}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto flex-shrink-0 ${
                 isDispatched
                   ? 'bg-emerald-700/80 text-white cursor-default opacity-90'
                   : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
               }`}
             >
-              <i className={`fa-solid ${isDispatched ? 'fa-check' : 'fa-truck-fast'} text-[11px]`}></i>
+              <i
+                className={`fa-solid ${
+                  isDispatched ? 'fa-check' : 'fa-truck-fast'
+                } text-[11px]`}
+              ></i>
               <span>{isDispatched ? 'Dispatched to TR-01' : 'Verify & Dispatch'}</span>
             </button>
           </div>
