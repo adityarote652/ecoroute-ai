@@ -202,17 +202,20 @@ export async function fetchBinsFromDB() {
     // fallback to simulated DB fetch
   }
 
-  // 1.5-second async database fetch simulation
+  // 1.2-second async database fetch simulation with rich bin metadata
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve([
-        { id: 1, name: 'Pune City Center',          pos: [18.5204, 73.8567], fillPct: 88 },
-        { id: 2, name: 'Karvenagar / Cummins',       pos: [18.4893, 73.8202], fillPct: 62 },
-        { id: 3, name: 'Hinjewadi IT Park',          pos: [18.5913, 73.7389], fillPct: 35 },
-        { id: 4, name: 'Hadapsar',                   pos: [18.4966, 73.9416], fillPct: 92 },
-        { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fillPct: 68 },
+        { id: 'B01', name: 'Shivajinagar Market',    pos: [18.5220, 73.8549], fillPct: 94, capacity: '1000L', capacityL: 1000, wasteType: 'Organic', lastPickup: 'Today, 06:00 AM' },
+        { id: 'B04', name: 'Mandai Market',          pos: [18.5193, 73.8530], fillPct: 91, capacity: '1200L', capacityL: 1200, wasteType: 'Mixed',   lastPickup: 'Yesterday, 04:30 PM' },
+        { id: 'B06', name: 'FC Road Night Zone',     pos: [18.5184, 73.8566], fillPct: 97, capacity: '1000L', capacityL: 1000, wasteType: 'Organic', lastPickup: 'Yesterday, 10:00 PM' },
+        { id: 1,     name: 'Pune City Center',       pos: [18.5204, 73.8567], fillPct: 88, capacity: '1000L', capacityL: 1000, wasteType: 'Organic', lastPickup: 'Today, 06:30 AM' },
+        { id: 2,     name: 'Karvenagar / Cummins',    pos: [18.4893, 73.8202], fillPct: 62, capacity: '750L',  capacityL: 750,  wasteType: 'Mixed',   lastPickup: 'Yesterday, 05:00 PM' },
+        { id: 3,     name: 'Hinjewadi IT Park',       pos: [18.5913, 73.7389], fillPct: 35, capacity: '1500L', capacityL: 1500, wasteType: 'Recyclable', lastPickup: 'Today, 07:15 AM' },
+        { id: 4,     name: 'Hadapsar Terminal',       pos: [18.4966, 73.9416], fillPct: 92, capacity: '1500L', capacityL: 1500, wasteType: 'Mixed',   lastPickup: 'Yesterday, 04:30 PM' },
+        { id: 5,     name: 'Kothrud Stand',           pos: [18.5074, 73.8151], fillPct: 68, capacity: '800L',  capacityL: 800,  wasteType: 'Organic', lastPickup: '2 days ago' },
       ]);
-    }, 1500);
+    }, 1200);
   });
 }
 

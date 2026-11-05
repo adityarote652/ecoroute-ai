@@ -372,12 +372,20 @@
       let badgeClass = bin.urgency === 'high' ? 'bg-rose-500/20 text-rose-500' : 'bg-amber-500/20 text-amber-500';
       let scoreColor = bin.priorityScore >= 80 ? 'text-rose-500' : bin.priorityScore >= 50 ? 'text-amber-500' : 'text-emerald-500';
       
+      const lat = bin.latitude || bin.lat || (bin.pos ? bin.pos[0] : 18.5204);
+      const lng = bin.longitude || bin.lon || bin.lng || (bin.pos ? bin.pos[1] : 73.8567);
+
       return `
-        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+        <div onclick="flyToBin(${lat}, ${lng}, 16, '${bin.id}')"
+             title="Click to zoom map to ${bin.name} (${lat}, ${lng})"
+             class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-md transition-all active:scale-[0.98] group">
             <div class="flex items-center gap-3">
-                <span class="w-6 h-6 rounded-lg ${badgeClass} font-bold flex items-center justify-center font-mono text-[10px]">#${idx+1}</span>
+                <span class="w-6 h-6 rounded-lg ${badgeClass} font-bold flex items-center justify-center font-mono text-[10px] group-hover:scale-110 transition-transform">#${idx+1}</span>
                 <div>
-                    <div class="font-bold text-slate-900 dark:text-white">${bin.id} - ${bin.name}</div>
+                    <div class="font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                        <span>${bin.id} - ${bin.name}</span>
+                        <i class="fa-solid fa-location-crosshairs text-[10px] text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </div>
                     <div class="text-[10px] text-slate-400">${bin.areaType} • ${bin.wasteType}</div>
                 </div>
             </div>
@@ -1154,27 +1162,32 @@
       showCitizenBanner("E-Waste Pickup Scheduled for tomorrow 10:00 AM");
   };
 
-  // Async Route Generation with loading state
+  // Async OSRM Real Route Generation with loading state
   window.handleGenerateRouteWithLoading = async function(btn) {
       const button = btn || document.getElementById('btnGenerateOptimalRoute');
       const originalHtml = button ? button.innerHTML : '';
       if (button) {
           button.disabled = true;
-          button.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Calculating Route...</span>`;
+          button.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Calculating Street Route...</span>`;
       }
 
       try {
-          if (window.generateOptimalRouteBackend) {
-              await window.generateOptimalRouteBackend('Ward 4');
+          if (window.generateOSRMRoute) {
+              await window.generateOSRMRoute();
           } else {
-              await new Promise(r => setTimeout(r, 1500));
+              window.dispatchEvent(new CustomEvent('ecoroute:show'));
+              if (window.generateOptimalRouteBackend) {
+                  await window.generateOptimalRouteBackend('Ward 4');
+              } else {
+                  await new Promise(r => setTimeout(r, 1200));
+              }
           }
 
           generateEcoRoute();
           if (window.setMapShowRoute) window.setMapShowRoute(true);
-          window.dispatchEvent(new CustomEvent('ecoroute:show'));
-          showSimAlert("✅ Optimal EcoRoute generated for Ward 4 (52.6% Distance Saved)!");
+          showSimAlert("✅ Optimal street route calculated via OSRM Street Engine!");
       } catch (err) {
+          console.error("Route calculation error:", err);
           showSimAlert(`❌ Route calculation failed: ${err.message || 'Error'}`);
       } finally {
           if (button) {
