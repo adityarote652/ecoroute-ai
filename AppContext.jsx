@@ -1,0 +1,513 @@
+import React, { createContext, useContext, useSyncExternalStore } from 'react';
+import { createRoot } from 'react-dom/client';
+
+// ── Initial State Seed Data ──────────────────────────────────────────────────
+const INITIAL_REPORTS = [
+  {
+    id: 'T-104',
+    ticketNum: '104',
+    title: 'Market Gate 2 Overflow',
+    issue: 'Overflowing Waste',
+    location: 'Mandai Sub-Ward',
+    reportedBy: 'Citizen #104',
+    time: '25 mins ago',
+    priority: 'High Priority',
+    status: 'Pending',
+  },
+  {
+    id: 'T-089',
+    ticketNum: '089',
+    title: 'Bin Lid Broken at Ward 4',
+    issue: 'Damaged Bin Structure',
+    location: 'Deccan Gymkhana Stand',
+    reportedBy: 'Resident',
+    time: '1 hr ago',
+    priority: 'Moderate Risk',
+    status: 'Pending',
+  },
+];
+
+const INITIAL_BINS = [
+  {
+    id: 'B-01',
+    name: 'Shivajinagar Market',
+    sector: 'Ward 12 • Commercial Sector',
+    capacity: '1000L',
+    wasteType: 'Organic',
+    dailyRate: '145 kg/day',
+    baseFill: 88,
+    fillPct: 88,
+    status: 'Active',
+  },
+  {
+    id: 'B-02',
+    name: 'Kothrud Stand',
+    sector: 'Ward 08 • Transit Hub',
+    capacity: '750L',
+    wasteType: 'Dry',
+    dailyRate: '95 kg/day',
+    baseFill: 62,
+    fillPct: 62,
+    status: 'Active',
+  },
+  {
+    id: 'B-03',
+    name: 'FC Road Commercial Hub',
+    sector: 'Ward 12 • High-Footfall Area',
+    capacity: '1000L',
+    wasteType: 'Mixed',
+    dailyRate: '160 kg/day',
+    baseFill: 78,
+    fillPct: 78,
+    status: 'Active',
+  },
+  {
+    id: 'B-04',
+    name: 'Karve Road Junction',
+    sector: 'Ward 09 • Residential Crossing',
+    capacity: '500L',
+    wasteType: 'Hazardous',
+    dailyRate: '45 kg/day',
+    baseFill: 45,
+    fillPct: 45,
+    status: 'Active',
+  },
+];
+
+// ── Global Reactive Store (Bridge for Context across separate React roots) ───
+class GlobalAppStore {
+  constructor() {
+    this.state = {
+      citizenReports: INITIAL_REPORTS,
+      greenPoints: 450,
+      bins: INITIAL_BINS,
+      isSimulated: false,
+    };
+    this.listeners = new Set();
+
+    this.actions = {
+      // 1. Citizen to Municipal Sync: push report to Context array
+      addCitizenReport: (reportData) => {
+        const ticketNum = reportData.ticketNum || String(Math.floor(105 + Math.random() * 20));
+        const newReport = {
+          id: 'REP-' + Date.now(),
+          ticketNum,
+          title: reportData.title || `${reportData.issue || 'Waste Issue'} at ${reportData.locationName || 'Ward Station'}`,
+          issue: reportData.issue || 'Overflowing Waste',
+          location: reportData.locationName || 'Ward Station',
+          reportedBy: reportData.reportedBy || 'Alex Johnson',
+          time: 'Just now',
+          priority: 'High Priority',
+          status: 'Pending',
+          notes: reportData.notes || '',
+        };
+
+        this.setState((prev) => ({
+          citizenReports: [newReport, ...prev.citizenReports],
+          greenPoints: prev.greenPoints + 50, // Auto-add +50 points on submission
+        }));
+
+        // Keep DOM elements synchronized
+        this.syncDOM();
+        return newReport;
+      },
+
+      // Dispatch complaint action for Municipal oversight
+      dispatchComplaint: (reportIdOrTitle) => {
+        this.setState((prev) => ({
+          citizenReports: prev.citizenReports.map((r) =>
+            r.id === reportIdOrTitle || r.title === reportIdOrTitle
+              ? { ...r, status: 'Dispatched to TR-01' }
+              : r
+          ),
+        }));
+        this.syncDOM();
+      },
+
+      // 2. Green Points Wallet Sync: add and deduct globally
+      addGreenPoints: (amount = 50) => {
+        this.setState((prev) => ({
+          greenPoints: prev.greenPoints + amount,
+        }));
+        this.syncDOM();
+      },
+
+      deductGreenPoints: (amount) => {
+        let success = false;
+        this.setState((prev) => {
+          if (prev.greenPoints >= amount) {
+            success = true;
+            return { greenPoints: prev.greenPoints - amount };
+          }
+          return prev;
+        });
+        this.syncDOM();
+        return success;
+      },
+
+      setGreenPoints: (pts) => {
+        this.setState({ greenPoints: pts });
+        this.syncDOM();
+      },
+
+      // 3. Bin State Sync: Simulate +6h Waste updates Admin Registry
+      simulateAdvanceTime: () => {
+        this.setState((prev) => {
+          const nextSimulated = !prev.isSimulated;
+          const updatedBins = prev.bins.map((bin) => {
+            if (nextSimulated) {
+              const newFill = Math.min(100, bin.baseFill + 15);
+              const isCritical = newFill >= 80;
+              return {
+                ...bin,
+                fillPct: newFill,
+                status: isCritical ? 'Critical (≥80% Dispatch)' : 'Warning (50-79%)',
+              };
+            } else {
+              return {
+                ...bin,
+                fillPct: bin.baseFill,
+                status: 'Active',
+              };
+            }
+          });
+
+          return {
+            isSimulated: nextSimulated,
+            bins: updatedBins,
+          };
+        });
+        this.syncDOM();
+      },
+
+      resetSimulation: () => {
+        this.setState((prev) => ({
+          isSimulated: false,
+          bins: prev.bins.map((bin) => ({
+            ...bin,
+            fillPct: bin.baseFill,
+            status: 'Active',
+          })),
+        }));
+        this.syncDOM();
+      },
+
+      addBin: (binData) => {
+        const newBin = {
+          id: binData.id || `B-${String(this.state.bins.length + 1).padStart(2, '0')}`,
+          name: binData.name || 'Deccan Gymkhana Stand',
+          sector: binData.sector || 'Ward 04 • High-Priority Sector',
+          capacity: binData.capacity || '1000L',
+          wasteType: binData.wasteType || 'Organic',
+          dailyRate: binData.dailyRate || '85 kg/day',
+          baseFill: binData.fillPct || 85,
+          fillPct: binData.fillPct || 85,
+          status: binData.status || 'Active',
+        };
+
+        this.setState((prev) => ({
+          bins: [...prev.bins, newBin],
+        }));
+        this.syncDOM();
+      },
+    };
+  }
+
+  getState = () => this.state;
+
+  setState = (updater) => {
+    const next = typeof updater === 'function' ? updater(this.state) : updater;
+    this.state = { ...this.state, ...next };
+    this.listeners.forEach((listener) => listener());
+  };
+
+  subscribe = (listener) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  syncDOM = () => {
+    // Keep raw DOM elements in sync if present
+    if (typeof document === 'undefined') return;
+
+    // Green Points
+    const ptsEl = document.getElementById('citizenPoints');
+    if (ptsEl) ptsEl.textContent = `${this.state.greenPoints} PTS`;
+    if (window.citizenPoints !== undefined) window.citizenPoints = this.state.greenPoints;
+    if (window.state) window.state.greenPoints = this.state.greenPoints;
+
+    // Complaint Count
+    const pendingEl = document.getElementById('complaintPendingCount');
+    if (pendingEl) {
+      const pendingCount = this.state.citizenReports.filter((r) => r.status === 'Pending').length;
+      pendingEl.textContent = pendingCount > 0 ? `${pendingCount} Pending` : 'All Dispatched';
+      pendingEl.className = pendingCount > 0
+        ? 'text-xs px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full font-bold'
+        : 'text-xs px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold';
+    }
+
+    // High Bins Indicator
+    const muniHighBins = document.getElementById('muniHighBins');
+    if (muniHighBins) {
+      muniHighBins.textContent = this.state.isSimulated
+        ? '18 Bins Require Collection'
+        : '15 Bins Require Collection';
+    }
+
+    // Admin Bin Registry Count
+    const countEl = document.getElementById('adminBinCount');
+    if (countEl) countEl.textContent = this.state.bins.length + 21; // Baseline 25+
+  };
+}
+
+export const appStore = new GlobalAppStore();
+
+// ── React Context Creation ───────────────────────────────────────────────────
+export const AppContext = createContext(null);
+
+export function AppProvider({ children }) {
+  const state = useSyncExternalStore(appStore.subscribe, appStore.getState);
+  const contextValue = {
+    ...state,
+    ...appStore.actions,
+  };
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+export function useApp() {
+  const context = useContext(AppContext);
+  if (context) return context;
+  // Seamless fallback to store directly if rendered outside a specific Provider boundary
+  const state = useSyncExternalStore(appStore.subscribe, appStore.getState);
+  return { ...state, ...appStore.actions };
+}
+
+// ── 1. Citizen Complaint Oversight React Component ──────────────────────────
+export function MunicipalComplaintsPanel() {
+  const { citizenReports, dispatchComplaint } = useApp();
+
+  return (
+    <div className="space-y-3">
+      {citizenReports.map((report) => {
+        const isDispatched = report.status === 'Dispatched to TR-01';
+
+        return (
+          <div
+            key={report.id}
+            className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all animate-in fade-in duration-300"
+          >
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-900 dark:text-white">
+                  {report.title}
+                </span>
+                <span
+                  className={`complaint-badge px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    isDispatched
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                      : report.priority === 'High Priority'
+                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                  }`}
+                >
+                  {isDispatched ? 'Dispatched to TR-01' : report.priority}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Reported by {report.reportedBy} • {report.location} • {report.time}
+              </div>
+            </div>
+
+            <button
+              onClick={() => dispatchComplaint(report.id)}
+              disabled={isDispatched}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto ${
+                isDispatched
+                  ? 'bg-emerald-700/80 text-white cursor-default opacity-90'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
+              }`}
+            >
+              <i className={`fa-solid ${isDispatched ? 'fa-check' : 'fa-truck-fast'} text-[11px]`}></i>
+              <span>{isDispatched ? 'Dispatched to TR-01' : 'Verify & Dispatch'}</span>
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── 2. Admin Bin Registry Table React Component ─────────────────────────────
+export function AdminBinRegistryTable() {
+  const { bins, isSimulated } = useApp();
+
+  return (
+    <>
+      {bins.map((bin) => {
+        const isCritical = bin.fillPct >= 80;
+        const isWarning = bin.fillPct >= 50 && bin.fillPct < 80;
+
+        return (
+          <tr
+            key={bin.id}
+            className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors"
+          >
+            <td className="p-3">
+              <div className="font-bold text-slate-900 dark:text-white">
+                {bin.id} • {bin.name}
+              </div>
+              <div className="text-[11px] text-slate-400">{bin.sector}</div>
+            </td>
+            <td className="p-3 font-mono font-semibold text-slate-700 dark:text-slate-300">
+              {bin.capacity}
+            </td>
+            <td className="p-3">
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  bin.wasteType === 'Organic'
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                    : bin.wasteType === 'Dry'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                    : bin.wasteType === 'Hazardous'
+                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                }`}
+              >
+                {bin.wasteType}
+              </span>
+            </td>
+            <td className="p-3 font-mono text-slate-600 dark:text-slate-400">
+              <div className="flex items-center gap-1.5">
+                <span>{bin.dailyRate}</span>
+                <span
+                  className={`text-[10px] font-bold font-mono px-1.5 py-0.2 rounded ${
+                    isCritical
+                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                      : isWarning
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                      : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                  }`}
+                >
+                  {bin.fillPct}%
+                </span>
+              </div>
+            </td>
+            <td className="p-3">
+              <span
+                className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all ${
+                  isCritical
+                    ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300 animate-pulse'
+                    : isWarning
+                    ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300'
+                    : 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
+                }`}
+              >
+                {bin.status}
+              </span>
+            </td>
+          </tr>
+        );
+      })}
+    </>
+  );
+}
+
+// ── 3. Green Points Wallet React Component ──────────────────────────────────
+export function CitizenWallet() {
+  const { greenPoints } = useApp();
+
+  return (
+    <div className="flex items-center gap-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-2xl shadow-md">
+      <i className="fa-solid fa-coins text-amber-300 text-2xl animate-bounce"></i>
+      <div>
+        <div className="text-[10px] uppercase font-bold tracking-wider opacity-90">
+          Green Points Wallet
+        </div>
+        <div className="text-2xl font-extrabold font-mono" id="citizenPoints">
+          {greenPoints} PTS
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Component Mounting Utilities ────────────────────────────────────────────
+export function mountCitizenWallet() {
+  const rootEl = document.getElementById('citizenWalletRoot');
+  if (rootEl && !rootEl._reactRoot) {
+    const root = createRoot(rootEl);
+    root.render(
+      <AppProvider>
+        <CitizenWallet />
+      </AppProvider>
+    );
+    rootEl._reactRoot = root;
+  }
+}
+
+export function mountMunicipalComplaints() {
+  const rootEl = document.getElementById('muniComplaintList');
+  if (rootEl && !rootEl._reactRoot) {
+    const root = createRoot(rootEl);
+    root.render(
+      <AppProvider>
+        <MunicipalComplaintsPanel />
+      </AppProvider>
+    );
+    rootEl._reactRoot = root;
+  }
+}
+
+export function mountAdminBinTable() {
+  const rootEl = document.getElementById('adminBinTableBody');
+  if (rootEl && !rootEl._reactRoot) {
+    const root = createRoot(rootEl);
+    root.render(
+      <AppProvider>
+        <AdminBinRegistryTable />
+      </AppProvider>
+    );
+    rootEl._reactRoot = root;
+  }
+}
+
+export function mountAllContextPanels() {
+  mountCitizenWallet();
+  mountMunicipalComplaints();
+  mountAdminBinTable();
+  appStore.syncDOM();
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mountAllContextPanels);
+  } else {
+    mountAllContextPanels();
+  }
+}
+
+// Global window bindings for inter-dashboard synchronization
+if (typeof window !== 'undefined') {
+  window.appStore = appStore;
+  window.useApp = useApp;
+  window.AppProvider = AppProvider;
+  window.AppContext = AppContext;
+  window.mountMunicipalComplaints = mountMunicipalComplaints;
+  window.mountAdminBinTable = mountAdminBinTable;
+  window.mountCitizenWallet = mountCitizenWallet;
+  window.mountAllContextPanels = mountAllContextPanels;
+
+  // Direct helper methods for button handlers
+  window.addCitizenReportToContext = (rep) => appStore.actions.addCitizenReport(rep);
+  window.dispatchComplaintInContext = (id) => appStore.actions.dispatchComplaint(id);
+  window.addGreenPointsInContext = (amt) => appStore.actions.addGreenPoints(amt);
+  window.deductGreenPointsInContext = (amt) => appStore.actions.deductGreenPoints(amt);
+  window.simulateAdvanceTimeInContext = () => appStore.actions.simulateAdvanceTime();
+  window.resetSimulationInContext = () => appStore.actions.resetSimulation();
+  window.addBinToContext = (b) => appStore.actions.addBin(b);
+}

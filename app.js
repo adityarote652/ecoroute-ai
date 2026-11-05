@@ -548,6 +548,9 @@
 
   function simulateAdvanceTime() {
     state.simulatedAdvanced = !state.simulatedAdvanced;
+    if (window.appStore) {
+      window.appStore.actions.simulateAdvanceTime();
+    }
     if (state.simulatedAdvanced) {
       state.bins.forEach(bin => {
           bin.fillPercent = Math.min(100, Math.round(bin.fillPercent + 15));
@@ -572,6 +575,9 @@
 
   function resetSimulation() {
     state.simulatedAdvanced = false;
+    if (window.appStore) {
+      window.appStore.actions.resetSimulation();
+    }
     state.bins = JSON.parse(JSON.stringify(initialBinsState));
     state.routeActive = false;
     state.ecoRoute = null;
@@ -952,6 +958,9 @@
   };
 
   window.dispatchComplaint = function(btn, title) {
+      if (window.appStore) {
+          window.appStore.actions.dispatchComplaint(title);
+      }
       if (!btn) return;
       const card = btn.closest('.p-4') || btn.parentElement;
       if (card) {
@@ -1083,10 +1092,23 @@
               renderDashboard();
           }
 
+          const ticketNum = Math.floor(105 + Math.random() * 20);
+
+          // Citizen to Municipal Sync: push report to AppContext array
+          if (window.appStore) {
+              window.appStore.actions.addCitizenReport({
+                  ticketNum: String(ticketNum),
+                  title: `${issue} at ${locationName}`,
+                  issue: issue,
+                  locationName: locationName,
+                  notes: notes,
+                  reportedBy: window.authState?.currentUser?.displayName || 'Citizen Reporter'
+              });
+          }
+
           // Update UI ticket list: prepend new ticket card into "My Submitted Reports Status"
           const reportsContainer = $('citizenMyReports');
           if (reportsContainer) {
-              const ticketNum = Math.floor(105 + Math.random() * 20);
               const card = document.createElement('div');
               card.className = "p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 animate-in fade-in duration-300";
               card.innerHTML = `
@@ -1133,8 +1155,11 @@
   window.handleCitizenReportSubmit = uploadReportToDB;
 
   window.redeemReward = function(itemName, itemCost) {
-      const currentPts = (typeof window.citizenPoints === 'number') ? window.citizenPoints : (state.greenPoints || 450);
+      const currentPts = (window.appStore ? window.appStore.getState().greenPoints : ((typeof window.citizenPoints === 'number') ? window.citizenPoints : (state.greenPoints || 450)));
       if (currentPts >= itemCost) {
+          if (window.appStore) {
+              window.appStore.actions.deductGreenPoints(itemCost);
+          }
           if (window.setGreenPoints) {
               window.setGreenPoints(prev => Math.max(0, prev - itemCost));
           }
@@ -1352,14 +1377,14 @@
     buildMap();
   }
 
-  // Patch window.switchView so the map invalidates size every time
-  // the municipal view becomes visible (Leaflet needs this after hidden->visible)
+  // Patch window.switchView so the map invalidates size and Context panels mount
   const _origSwitch = window.switchView;
   window.switchView = function(view) {
     if (_origSwitch) _origSwitch(view);
     if (view === 'municipal') {
       setTimeout(function() {
         if (window.mountReactMap) window.mountReactMap();
+        if (window.mountMunicipalComplaints) window.mountMunicipalComplaints();
         buildMap();
         if (_map) _map.invalidateSize();
       }, 80);
@@ -1368,6 +1393,11 @@
       setTimeout(function() {
         if (window.mountCitizenMap) window.mountCitizenMap();
         if (window.mountCitizenWallet) window.mountCitizenWallet();
+      }, 80);
+    }
+    if (view === 'admin') {
+      setTimeout(function() {
+        if (window.mountAdminBinTable) window.mountAdminBinTable();
       }, 80);
     }
   };
@@ -1411,6 +1441,20 @@ window.saveAdminParams = function() {
 };
 
 window.addNewAdminBin = function() {
+  // Sync with AppContext store
+  if (window.appStore) {
+    window.appStore.actions.addBin({
+      id: 'B-26',
+      name: 'Deccan Gymkhana',
+      sector: 'Ward 04 • High-Priority Sector',
+      capacity: '1000L',
+      wasteType: 'Organic',
+      dailyRate: '85 kg/day',
+      fillPct: 85,
+      status: 'Active'
+    });
+  }
+
   const tbody = document.getElementById('adminBinTableBody');
   if (tbody) {
     const tr = document.createElement('tr');

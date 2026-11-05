@@ -268,11 +268,15 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
       setShowRoute(false);
       setRoutePositions([]);
     };
-    const handleToggleSim = () => setIsSimulated((prev) => !prev);
+    const handleToggleSim = () => {
+      setIsSimulated((prev) => !prev);
+      if (window.appStore) window.appStore.actions.simulateAdvanceTime();
+    };
     const handleReset = () => {
       setIsSimulated(false);
       setShowRoute(false);
       setRoutePositions([]);
+      if (window.appStore) window.appStore.actions.resetSimulation();
     };
 
     window.addEventListener('ecoroute:show', handleShowRoute);
@@ -464,11 +468,15 @@ export function mountCitizenMap() {
 }
 
 import { CitizenWallet, mountCitizenWallet } from './CitizenComponent.jsx';
+import { mountAllContextPanels, mountMunicipalComplaints, mountAdminBinTable } from './AppContext.jsx';
 
 export function mountAllMaps() {
   mountMap();
   mountCitizenMap();
   mountCitizenWallet();
+  mountMunicipalComplaints();
+  mountAdminBinTable();
+  mountAllContextPanels();
 }
 
 if (document.readyState === 'loading') {
@@ -480,8 +488,12 @@ if (document.readyState === 'loading') {
 window.mountReactMap = mountMap;
 window.mountCitizenMap = mountCitizenMap;
 window.mountCitizenWallet = mountCitizenWallet;
+window.mountMunicipalComplaints = mountMunicipalComplaints;
+window.mountAdminBinTable = mountAdminBinTable;
+window.mountAllContextPanels = mountAllContextPanels;
 window.mountAllMaps = mountAllMaps;
 window.PuneMap = PuneMap;
 window.EcoRouteMap = EcoRouteMap;
 window.CitizenWallet = CitizenWallet;
-export { CitizenWallet, mountCitizenWallet };
+export { CitizenWallet, mountCitizenWallet, mountAllContextPanels, mountMunicipalComplaints, mountAdminBinTable };
+
