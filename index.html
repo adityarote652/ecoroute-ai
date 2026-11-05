@@ -538,12 +538,82 @@
                                     <th class="p-3">Capacity</th>
                                     <th class="p-3">Type</th>
                                     <th class="p-3">Daily Rate</th>
-                                    <th class="p-3">Last Collected</th>
                                     <th class="p-3">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="adminBinTableBody" class="divide-y divide-slate-100 dark:divide-slate-800">
-                                <!-- Dynamic Bin Rows -->
+                                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                                    <td class="p-3">
+                                        <div class="font-bold text-slate-900 dark:text-white">B-01 • Shivajinagar Market</div>
+                                        <div class="text-[11px] text-slate-400">Ward 12 • Commercial Sector</div>
+                                    </td>
+                                    <td class="p-3 font-mono font-semibold text-slate-700 dark:text-slate-300">1000L</td>
+                                    <td class="p-3">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                            Organic
+                                        </span>
+                                    </td>
+                                    <td class="p-3 font-mono text-slate-600 dark:text-slate-400">145 kg/day</td>
+                                    <td class="p-3">
+                                        <button onclick="showSimAlert('Opened calibration for B-01 Shivajinagar Market')" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-xs">
+                                            Edit / Calibrate
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                                    <td class="p-3">
+                                        <div class="font-bold text-slate-900 dark:text-white">B-02 • Kothrud Stand</div>
+                                        <div class="text-[11px] text-slate-400">Ward 08 • Transit Hub</div>
+                                    </td>
+                                    <td class="p-3 font-mono font-semibold text-slate-700 dark:text-slate-300">750L</td>
+                                    <td class="p-3">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                                            Dry
+                                        </span>
+                                    </td>
+                                    <td class="p-3 font-mono text-slate-600 dark:text-slate-400">95 kg/day</td>
+                                    <td class="p-3">
+                                        <button onclick="showSimAlert('Opened calibration for B-02 Kothrud Stand')" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-xs">
+                                            Edit / Calibrate
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                                    <td class="p-3">
+                                        <div class="font-bold text-slate-900 dark:text-white">B-03 • FC Road Commercial Hub</div>
+                                        <div class="text-[11px] text-slate-400">Ward 12 • High-Footfall Area</div>
+                                    </td>
+                                    <td class="p-3 font-mono font-semibold text-slate-700 dark:text-slate-300">1000L</td>
+                                    <td class="p-3">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                            Mixed
+                                        </span>
+                                    </td>
+                                    <td class="p-3 font-mono text-slate-600 dark:text-slate-400">160 kg/day</td>
+                                    <td class="p-3">
+                                        <button onclick="showSimAlert('Opened calibration for B-03 FC Road Hub')" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-xs">
+                                            Edit / Calibrate
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
+                                    <td class="p-3">
+                                        <div class="font-bold text-slate-900 dark:text-white">B-04 • Karve Road Junction</div>
+                                        <div class="text-[11px] text-slate-400">Ward 09 • Residential Crossing</div>
+                                    </td>
+                                    <td class="p-3 font-mono font-semibold text-slate-700 dark:text-slate-300">500L</td>
+                                    <td class="p-3">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                                            Hazardous
+                                        </span>
+                                    </td>
+                                    <td class="p-3 font-mono text-slate-600 dark:text-slate-400">45 kg/day</td>
+                                    <td class="p-3">
+                                        <button onclick="showSimAlert('Opened calibration for B-04 Karve Road Junction')" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-xs">
+                                            Edit / Calibrate
+                                        </button>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -600,7 +670,53 @@
                     </div>
 
                     <div class="space-y-3" id="adminTruckList">
-                        <!-- Dynamic Truck List -->
+                        <!-- Truck TR-01 Card -->
+                        <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fa-solid fa-truck"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-900 dark:text-white text-xs">Truck TR-01</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                            Active
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                        Driver: <strong class="text-slate-700 dark:text-slate-300">Ramesh P.</strong> • Cap: <span class="font-mono font-semibold">4000L</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[11px] text-slate-400 block font-mono">Assigned: Route A</span>
+                                <span class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">Live GPS Connected</span>
+                            </div>
+                        </div>
+
+                        <!-- Truck TR-02 Card -->
+                        <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center font-bold text-sm">
+                                    <i class="fa-solid fa-truck"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-900 dark:text-white text-xs">Truck TR-02</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                            Standby
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                        Driver: <strong class="text-slate-700 dark:text-slate-300">Suresh K.</strong> • Cap: <span class="font-mono font-semibold">3500L</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[11px] text-slate-400 block font-mono">Depot: Central Yard</span>
+                                <span class="text-[11px] font-semibold text-amber-600 dark:text-amber-400">Ready for Dispatch</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -610,7 +726,53 @@
                         <i class="fa-solid fa-list-check text-indigo-500"></i> Real-Time Audit Log
                     </h3>
                     <div class="space-y-3 max-h-64 overflow-y-auto text-xs pr-1" id="adminAuditLogs">
-                        <!-- Dynamic Audit Log Entries -->
+                        <!-- Log 1 -->
+                        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-start gap-3">
+                            <div class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center flex-shrink-0 text-xs">
+                                <i class="fa-solid fa-route"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-mono text-[10px] text-slate-400 font-bold">[08:30 AM]</span>
+                                    <span class="text-[10px] font-semibold text-emerald-600">Auto Optimizer</span>
+                                </div>
+                                <p class="text-slate-700 dark:text-slate-300 text-xs mt-0.5">
+                                    System auto-generated optimal route for Ward 4
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Log 2 -->
+                        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-start gap-3">
+                            <div class="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 flex items-center justify-center flex-shrink-0 text-xs">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-mono text-[10px] text-slate-400 font-bold">[09:15 AM]</span>
+                                    <span class="text-[10px] font-semibold text-amber-600">Citizen Inbound</span>
+                                </div>
+                                <p class="text-slate-700 dark:text-slate-300 text-xs mt-0.5">
+                                    Citizen report #104 logged for Shivajinagar
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Log 3 -->
+                        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex items-start gap-3">
+                            <div class="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 flex items-center justify-center flex-shrink-0 text-xs">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-mono text-[10px] text-slate-400 font-bold">[10:00 AM]</span>
+                                    <span class="text-[10px] font-semibold text-indigo-600">Driver Shift</span>
+                                </div>
+                                <p class="text-slate-700 dark:text-slate-300 text-xs mt-0.5">
+                                    Driver TR-01 accepted dispatched route
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -756,22 +918,133 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
                 <!-- Waste Category Breakdown Chart -->
-                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
-                    <h3 class="font-bold text-slate-900 dark:text-white text-base mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-pie text-teal-500"></i> Waste Category Breakdown
-                    </h3>
-                    <div class="h-64 relative flex items-center justify-center">
-                        <canvas id="chartWasteType"></canvas>
+                <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                                <i class="fa-solid fa-chart-pie text-teal-500"></i> Waste Category Breakdown
+                            </h3>
+                            <span class="text-[11px] font-semibold text-slate-400">Ward Aggregate</span>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Real-time distribution of waste streams logged across monitored ward stations.</p>
+
+                        <div class="space-y-5">
+                            <!-- Organic Waste (65%) -->
+                            <div>
+                                <div class="flex justify-between text-xs font-semibold mb-1.5">
+                                    <span class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Organic Waste
+                                    </span>
+                                    <span class="text-emerald-600 font-mono font-bold">65%</span>
+                                </div>
+                                <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+                                    <div class="bg-emerald-500 h-3 rounded-full transition-all duration-500" style="width: 65%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Recyclables (25%) -->
+                            <div>
+                                <div class="flex justify-between text-xs font-semibold mb-1.5">
+                                    <span class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Recyclables
+                                    </span>
+                                    <span class="text-blue-600 font-mono font-bold">25%</span>
+                                </div>
+                                <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+                                    <div class="bg-blue-500 h-3 rounded-full transition-all duration-500" style="width: 25%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Hazardous / Mixed (10%) -->
+                            <div>
+                                <div class="flex justify-between text-xs font-semibold mb-1.5">
+                                    <span class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Hazardous / Mixed
+                                    </span>
+                                    <span class="text-rose-600 font-mono font-bold">10%</span>
+                                </div>
+                                <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+                                    <div class="bg-rose-500 h-3 rounded-full transition-all duration-500" style="width: 10%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 text-[11px] text-slate-400 flex items-center justify-between">
+                        <span>Monitored Payload</span>
+                        <span class="font-bold text-slate-700 dark:text-slate-300 font-mono">14,250 kg / mo</span>
                     </div>
                 </div>
 
-                <!-- Daily CO2 & Fuel Savings Trend Chart -->
-                <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
-                    <h3 class="font-bold text-slate-900 dark:text-white text-base mb-4 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-line text-emerald-500"></i> Weekly Carbon & Fuel Savings Comparison
-                    </h3>
-                    <div class="h-64 relative">
-                        <canvas id="chartSavingsTrend"></canvas>
+                <!-- Weekly Carbon & Fuel Savings Comparison -->
+                <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-emerald-500"></i> Weekly Carbon & Fuel Savings Comparison
+                            </h3>
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                -52.6% Net Reduction
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Benchmarking static round-robin pickup routes against dynamic EcoRoute AI dispatch schedules.</p>
+
+                        <div class="space-y-6">
+                            <!-- Previous Fleet Schedule Bar -->
+                            <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded bg-slate-400"></span>
+                                        <span class="text-xs font-bold text-slate-700 dark:text-slate-200">Previous Fleet Schedule</span>
+                                    </div>
+                                    <div class="font-mono text-xs font-bold text-rose-500">
+                                        38.4 km &nbsp;|&nbsp; 43.2 kg CO₂
+                                    </div>
+                                </div>
+                                <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-xl h-5 overflow-hidden relative">
+                                    <div class="bg-slate-400 dark:bg-slate-500 h-full rounded-xl flex items-center justify-end pr-2 text-[10px] font-bold text-white transition-all duration-700" style="width: 100%">
+                                        Baseline (100%)
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- EcoRoute Optimized Bar -->
+                            <div class="p-4 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800/60">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded bg-emerald-500"></span>
+                                        <span class="text-xs font-bold text-emerald-900 dark:text-emerald-200">EcoRoute Optimized</span>
+                                    </div>
+                                    <div class="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                        18.2 km &nbsp;|&nbsp; 20.6 kg CO₂
+                                    </div>
+                                </div>
+                                <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-xl h-5 overflow-hidden relative">
+                                    <div class="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-xl flex items-center justify-end pr-2 text-[10px] font-bold text-white shadow-sm transition-all duration-700" style="width: 47.4%">
+                                        Optimized (47.4%)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Footer Metric Pills -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-700">
+                        <div class="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Dist Saved</div>
+                            <div class="text-sm font-bold text-emerald-600 font-mono">20.2 km/wk</div>
+                        </div>
+                        <div class="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">CO₂ Avoided</div>
+                            <div class="text-sm font-bold text-emerald-600 font-mono">22.6 kg/wk</div>
+                        </div>
+                        <div class="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Diesel Saved</div>
+                            <div class="text-sm font-bold text-teal-600 font-mono">~7.8 Litres</div>
+                        </div>
+                        <div class="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                            <div class="text-[10px] text-slate-400 uppercase font-semibold">Weekly Saving</div>
+                            <div class="text-sm font-bold text-indigo-600 font-mono">₹740 / route</div>
+                        </div>
                     </div>
                 </div>
 
@@ -790,7 +1063,41 @@
                     </div>
 
                     <div class="space-y-3" id="muniComplaintList">
-                        <!-- Dynamic Complaints -->
+                        <!-- Complaint 1 -->
+                        <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-slate-900 dark:text-white">Market Gate 2 Overflow</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                        High Priority
+                                    </span>
+                                </div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Reported by Citizen #104 • Mandai Sub-Ward • 25 mins ago
+                                </div>
+                            </div>
+                            <button onclick="this.textContent = '✓ Dispatched'; this.classList.replace('bg-emerald-600','bg-slate-400'); this.disabled = true; showSimAlert('Truck dispatched for Market Gate 2');" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto">
+                                <i class="fa-solid fa-truck-fast text-[11px]"></i> Verify & Dispatch
+                            </button>
+                        </div>
+
+                        <!-- Complaint 2 -->
+                        <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="space-y-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-bold text-slate-900 dark:text-white">Bin Lid Broken at Ward 4</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                        Moderate Risk
+                                    </span>
+                                </div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Reported by Resident • Deccan Gymkhana Stand • 1 hr ago
+                                </div>
+                            </div>
+                            <button onclick="this.textContent = '✓ Dispatched'; this.classList.replace('bg-emerald-600','bg-slate-400'); this.disabled = true; showSimAlert('Maintenance team dispatched for Bin Lid repair');" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto">
+                                <i class="fa-solid fa-truck-fast text-[11px]"></i> Verify & Dispatch
+                            </button>
+                        </div>
                     </div>
                 </div>
 

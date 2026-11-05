@@ -1064,8 +1064,25 @@
   };
 }());
 
-// =============================================================
+// Admin Hub UI Handlers
+window.filterAdminBinTable = function() {
+  const input = document.getElementById('adminBinSearch');
+  const query = (input ? input.value : '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#adminBinTableBody tr');
+  rows.forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(query) ? '' : 'none';
+  });
+};
 
+window.updateParamThreshold = function(val) {
+  const el = document.getElementById('paramThresholdVal');
+  if (el) el.textContent = val + '%';
+};
 
+window.saveAdminParams = function() {
+  alert('Admin system threshold parameters updated successfully.');
+};
 
-
+window.openAddTruckModal = function() {
+  alert('Truck Provisioning: Municipal fleet expansion requested.');
+};
