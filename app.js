@@ -1005,35 +1005,68 @@
       }
   };
 
-  window.handleCitizenReportSubmit = async function(e) {
-      if (e) e.preventDefault();
-      const submitBtn = document.getElementById('btnSubmitCitizenReport') || (e.target && e.target.querySelector('button[type="submit"]'));
+  // Async Citizen Report Submission to DB with try/catch, loading spinner, and +50 DB points
+  async function uploadReportToDB(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const submitBtn = document.getElementById('btnSubmitCitizenReport') || (e && e.target && e.target.querySelector('button[type="submit"]'));
       const originalHtml = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
           submitBtn.disabled = true;
-          submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Submitting Report...</span>`;
+          submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Uploading to DB...</span>`;
       }
 
       try {
-          const binId = $('citizenBinSelect') ? $('citizenBinSelect').value : '';
+          const binSelect = $('citizenBinSelect');
+          const binId = binSelect ? binSelect.value : '';
           const issue = $('citizenIssueType') ? $('citizenIssueType').value : 'Overflowing Waste';
           const notes = $('citizenNotes') ? $('citizenNotes').value : '';
           const bin = state.bins.find(b => b.id === binId);
-          const locationName = bin ? bin.name : 'Ward 4 Station';
+          const locationName = bin ? bin.name : (binSelect?.options[binSelect.selectedIndex]?.text || 'Ward 4 Station');
 
-          // Await 1.5-second async backend promise (Firebase/simulated backend)
-          if (window.submitReportToBackend) {
-              await window.submitReportToBackend({
-                  binId,
-                  issue,
-                  locationName,
-                  notes,
-                  reportedBy: window.authState?.currentUser?.displayName || 'Alex Johnson'
-              });
+          const reportPayload = {
+              binId,
+              issue,
+              locationName,
+              notes,
+              reportedBy: window.authState?.currentUser?.displayName || 'Alex Johnson',
+              userUid: window.authState?.currentUser?.uid || 'user_guest'
+          };
+
+          // Push data to Firestore collection "citizen_reports" (or simulate with a 2-second setTimeout)
+          let backendResult = null;
+          if (window.uploadReportToDBBackend) {
+              backendResult = await window.uploadReportToDBBackend(reportPayload);
+          } else if (window.submitReportToBackend) {
+              backendResult = await window.submitReportToBackend(reportPayload);
           } else {
-              await new Promise(r => setTimeout(r, 1500));
+              // 2-second setTimeout simulation
+              backendResult = await new Promise((resolve) => {
+                  setTimeout(() => {
+                      resolve({
+                          id: 'REP-' + Date.now().toString(36).toUpperCase(),
+                          ...reportPayload,
+                          createdAt: new Date().toISOString(),
+                          status: 'Under Verification',
+                          rewardPoints: 50
+                      });
+                  }, 2000);
+              });
           }
 
+          // Add +50 points to the user's DB profile
+          if (window.updateUserProfilePointsInDB) {
+              await window.updateUserProfilePointsInDB(50);
+          } else {
+              const currentPts = (typeof window.citizenPoints === 'number') ? window.citizenPoints : (state.greenPoints || 450);
+              const newPts = currentPts + 50;
+              if (window.setGreenPoints) window.setGreenPoints(newPts);
+              state.greenPoints = newPts;
+              window.citizenPoints = newPts;
+              updateGreenPointsUI();
+              window.dispatchEvent(new CustomEvent('citizen:set-points', { detail: { amount: newPts } }));
+          }
+
+          // Update local bin urgency and simulation state
           if (bin) {
               bin.urgency = 'high';
               bin.priorityReason = `Citizen Report: ${issue}`;
@@ -1042,7 +1075,7 @@
               renderDashboard();
           }
 
-          // Prepend new pending ticket card into "My Submitted Reports Status"
+          // Update UI ticket list: prepend new ticket card into "My Submitted Reports Status"
           const reportsContainer = $('citizenMyReports');
           if (reportsContainer) {
               const ticketNum = Math.floor(105 + Math.random() * 20);
@@ -1065,16 +1098,9 @@
               reportsContainer.prepend(card);
           }
 
-          // Increase pts by 50 (to 500 PTS) in React state & DOM
-          if (window.setGreenPoints) {
-              window.setGreenPoints(prev => prev + 50);
-          }
-          state.greenPoints = (state.greenPoints || 450) + 50;
-          updateGreenPointsUI();
-          window.dispatchEvent(new CustomEvent('citizen:add-points', { detail: { amount: 50 } }));
-
           // Reset the form inputs and miniature preview
-          if (e.target) e.target.reset();
+          const formEl = (e && e.target && e.target.reset) ? e.target : document.querySelector('form[onsubmit*="uploadReportToDB"]') || document.querySelector('form[onsubmit*="handleCitizenReportSubmit"]');
+          if (formEl && formEl.reset) formEl.reset();
           const thumb = $('uploadThumbnail');
           const icon = $('uploadIcon');
           const ut = $('uploadText');
@@ -1083,16 +1109,20 @@
           if (ut) ut.textContent = 'Click to select photo or capture';
 
           // Trigger temporary green success banner at the top
-          showCitizenBanner("Report Verified & Submitted! +50 Green Points Added");
+          showCitizenBanner("Report Verified & Submitted! +50 Green Points Added to Profile");
       } catch (err) {
-          showCitizenBanner(`Submission failed: ${err.message || 'Error'}`);
+          console.error("uploadReportToDB failed:", err);
+          showCitizenBanner(`Submission failed: ${err.message || 'Error uploading to database'}`);
       } finally {
           if (submitBtn) {
               submitBtn.disabled = false;
               submitBtn.innerHTML = originalHtml;
           }
       }
-  };
+  }
+
+  window.uploadReportToDB = uploadReportToDB;
+  window.handleCitizenReportSubmit = uploadReportToDB;
 
   window.redeemReward = function(itemName, itemCost) {
       const currentPts = (typeof window.citizenPoints === 'number') ? window.citizenPoints : (state.greenPoints || 450);

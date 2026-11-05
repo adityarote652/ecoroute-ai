@@ -104,16 +104,114 @@ export async function authenticateUser(role, email) {
   });
 }
 
-// 1.5-second async simulated Promise for citizen reports (Firestore backend simulation)
-export async function submitReportToBackend(reportData) {
+// Update citizen profile points in DB
+export async function updateUserProfilePointsInDB(pointsToAdd = 50) {
+  const user = authState.currentUser;
+  const userId = user?.uid || 'user_guest_citizen';
+  const currentPts = (typeof window.citizenPoints === 'number') ? window.citizenPoints : (window.state?.greenPoints || 450);
+  const updatedPts = currentPts + pointsToAdd;
+
+  try {
+    if (db && user) {
+      const userRef = doc(db, 'users', userId);
+      await setDoc(userRef, { 
+        points: updatedPts, 
+        lastReportAt: new Date().toISOString(),
+        email: user.email || 'citizen@ecoroute.gov'
+      }, { merge: true });
+    }
+  } catch (e) {
+    console.info("Simulated DB user points update:", e);
+  }
+
+  // Synchronize React state, global state, and DOM
+  if (window.setGreenPoints) {
+    window.setGreenPoints(updatedPts);
+  }
+  window.citizenPoints = updatedPts;
+  if (window.state) {
+    window.state.greenPoints = updatedPts;
+  }
+  const el = document.getElementById('citizenPoints');
+  if (el) el.textContent = `${updatedPts} PTS`;
+  window.dispatchEvent(new CustomEvent('citizen:set-points', { detail: { amount: updatedPts } }));
+
+  return updatedPts;
+}
+
+// Async function uploadReportToDB()
+// Pushes report to Firestore collection "citizen_reports" (or simulates with 2-second setTimeout)
+// and updates the user's DB profile with +50 points
+export async function uploadReportToDB(reportData = {}) {
+  const collectionName = 'citizen_reports';
+  const payload = {
+    ...reportData,
+    status: 'Under Verification',
+    rewardPoints: 50,
+    createdAt: new Date().toISOString()
+  };
+
+  let reportId = 'REP-' + Date.now().toString(36).toUpperCase();
+
+  try {
+    if (db) {
+      const collRef = collection(db, collectionName);
+      // Attempt real Firestore insert with timeout fallback to ensure 2s smooth feedback
+      const savePromise = addDoc(collRef, payload);
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ id: reportId, simulated: true }), 2000));
+      const res = await Promise.race([savePromise, timeoutPromise]);
+      if (res && res.id) reportId = res.id;
+    } else {
+      // 2-second simulated delay
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  } catch (err) {
+    console.info("Firestore live push fallback to simulated 2s delay:", err);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
+  // Add +50 points to user's DB profile
+  await updateUserProfilePointsInDB(50);
+
+  return {
+    id: reportId,
+    ...payload
+  };
+}
+
+// Backward-compatible alias
+export const submitReportToBackend = uploadReportToDB;
+
+// Asynchronously fetch bin coordinates and fill-levels from DB (with loading delay simulation)
+export async function fetchBinsFromDB() {
+  try {
+    if (db) {
+      const binsColl = collection(db, 'bins');
+      const fetchPromise = getDocs(binsColl);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
+      const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
+      if (snapshot && !snapshot.empty) {
+        const binsList = [];
+        snapshot.forEach(docSnap => {
+          binsList.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        return binsList;
+      }
+    }
+  } catch (e) {
+    // fallback to simulated DB fetch
+  }
+
+  // 1.5-second async database fetch simulation
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve({
-        id: 'REP-' + Date.now().toString(36).toUpperCase(),
-        ...reportData,
-        status: 'Under Verification',
-        createdAt: new Date().toISOString()
-      });
+      resolve([
+        { id: 1, name: 'Pune City Center',          pos: [18.5204, 73.8567], fillPct: 88 },
+        { id: 2, name: 'Karvenagar / Cummins',       pos: [18.4893, 73.8202], fillPct: 62 },
+        { id: 3, name: 'Hinjewadi IT Park',          pos: [18.5913, 73.7389], fillPct: 35 },
+        { id: 4, name: 'Hadapsar',                   pos: [18.4966, 73.9416], fillPct: 92 },
+        { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fillPct: 68 },
+      ]);
     }, 1500);
   });
 }
@@ -141,7 +239,11 @@ window.firestoreDb = db;
 window.firebaseAuth = auth;
 window.authState = authState;
 window.authenticateUser = authenticateUser;
-window.submitReportToBackend = submitReportToBackend;
+window.submitReportToBackend = uploadReportToDB;
+window.uploadReportToDBBackend = uploadReportToDB;
+window.uploadReportToDB = uploadReportToDB;
+window.updateUserProfilePointsInDB = updateUserProfilePointsInDB;
+window.fetchBinsFromDB = fetchBinsFromDB;
 window.generateOptimalRouteBackend = generateOptimalRouteBackend;
 window.updateAuthNavbarUI = updateAuthNavbarUI;
 

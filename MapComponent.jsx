@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { fetchBinsFromDB } from './firebase.js';
 
 // ── Inject attribution SVG sizing rule to avoid Tailwind stretching ────────
 if (typeof document !== 'undefined') {
@@ -39,27 +40,11 @@ const redIcon    = makeDivIcon('#ef4444');   // Critical  >= 80%
 const orangeIcon = makeDivIcon('#f97316');   // Warning   50-79%
 const greenIcon  = makeDivIcon('#22c55e');   // Normal    < 50%
 
-const BASELINE_BINS = [
-  { id: 1, name: 'Pune City Center',          pos: [18.5204, 73.8567], fillPct: 88, fill: '88% (≥80%)',   label: 'Critical',  icon: redIcon    },
-  { id: 2, name: 'Karvenagar / Cummins',       pos: [18.4893, 73.8202], fillPct: 62, fill: '62% (50-79%)',  label: 'Warning',   icon: orangeIcon },
-  { id: 3, name: 'Hinjewadi IT Park',          pos: [18.5913, 73.7389], fillPct: 35, fill: '35% (<50%)',    label: 'Normal',    icon: greenIcon  },
-  { id: 4, name: 'Hadapsar',                   pos: [18.4966, 73.9416], fillPct: 92, fill: '92% (≥80%)',   label: 'Critical',  icon: redIcon    },
-  { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fillPct: 68, fill: '68% (50-79%)',  label: 'Warning',   icon: orangeIcon },
-];
-
-const SIMULATED_BINS = [
-  { id: 1, name: 'Pune City Center',          pos: [18.5204, 73.8567], fillPct: 98, fill: '98% (≥80%)',   label: 'Critical',  icon: redIcon    },
-  { id: 2, name: 'Karvenagar / Cummins',       pos: [18.4893, 73.8202], fillPct: 82, fill: '82% (≥80%)',   label: 'Critical',  icon: redIcon    },
-  { id: 3, name: 'Hinjewadi IT Park',          pos: [18.5913, 73.7389], fillPct: 50, fill: '50% (50-79%)',  label: 'Warning',   icon: orangeIcon },
-  { id: 4, name: 'Hadapsar',                   pos: [18.4966, 73.9416], fillPct: 100, fill: '100% (≥80%)', label: 'Critical',  icon: redIcon    },
-  { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fillPct: 88, fill: '88% (≥80%)',   label: 'Critical',  icon: redIcon    },
-];
-
 let _muniMapInstance = null;
 let _citizenMapInstance = null;
 
 // Ensure leaflet recalculates dimensions immediately to avoid gray tiles
-function MapResizer({ onReady }) {
+function MapResizer({ onReady, isLoading }) {
   const map = useMap();
   useEffect(() => {
     if (onReady) onReady(map);
@@ -71,14 +56,84 @@ function MapResizer({ onReady }) {
       clearTimeout(t2);
     };
   }, [map, onReady]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      const t = setTimeout(() => map.invalidateSize(), 80);
+      return () => clearTimeout(t);
+    }
+  }, [map, isLoading]);
+
   return null;
 }
 
 export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
+  const [binsData, setBinsData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showRoute, setShowRoute] = useState(false);
   const [isSimulated, setIsSimulated] = useState(false);
 
-  const binList = isSimulated ? SIMULATED_BINS : BASELINE_BINS;
+  // Map Data Fetching: wrap asynchronous DB fetching in a useEffect hook on page load
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBinsAsync() {
+      setIsLoading(true);
+      try {
+        let fetchedData = [];
+        if (typeof fetchBinsFromDB === 'function') {
+          fetchedData = await fetchBinsFromDB();
+        } else if (typeof window !== 'undefined' && window.fetchBinsFromDB) {
+          fetchedData = await window.fetchBinsFromDB();
+        } else {
+          // Asynchronous database simulation fallback
+          fetchedData = await new Promise((resolve) => {
+            setTimeout(() => {
+              resolve([
+                { id: 1, name: 'Pune City Center',          pos: [18.5204, 73.8567], fillPct: 88 },
+                { id: 2, name: 'Karvenagar / Cummins',       pos: [18.4893, 73.8202], fillPct: 62 },
+                { id: 3, name: 'Hinjewadi IT Park',          pos: [18.5913, 73.7389], fillPct: 35 },
+                { id: 4, name: 'Hadapsar',                   pos: [18.4966, 73.9416], fillPct: 92 },
+                { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fillPct: 68 },
+              ]);
+            }, 1500);
+          });
+        }
+
+        if (isMounted) {
+          setBinsData(fetchedData || []);
+        }
+      } catch (err) {
+        console.error('Error fetching bin coordinates and fill levels from DB:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadBinsAsync();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Compute reactive bin list with status labels, icons, and fill text
+  const binList = binsData.map((b) => {
+    const fillPct = isSimulated
+      ? Math.min(100, b.fillPct + (b.fillPct >= 90 ? 8 : 15))
+      : b.fillPct;
+    const isCritical = fillPct >= 80;
+    const isWarning = fillPct >= 50 && fillPct < 80;
+    const label = isCritical ? 'Critical' : isWarning ? 'Warning' : 'Normal';
+    const icon = isCritical ? redIcon : isWarning ? orangeIcon : greenIcon;
+    const fill = `${fillPct}% (${isCritical ? '≥80%' : isWarning ? '50-79%' : '<50%'})`;
+    return {
+      ...b,
+      fillPct,
+      label,
+      icon,
+      fill
+    };
+  });
+
   const redBins = binList.filter((b) => b.label === 'Critical');
   const routePositions = redBins.map((b) => b.pos);
 
@@ -157,54 +212,83 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   }, [allowRoute]);
 
   return (
-    <MapContainer
-      center={[18.5204, 73.8567]}
-      zoom={11}
-      style={{ height: height, minHeight: height, width: '100%' }}
-    >
-      <MapResizer onReady={onMapReady} />
+    <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: height, minHeight: height }}>
+      {/* Skeleton loader / "Loading Map Data..." overlay */}
+      {isLoading && (
+        <div 
+          className="absolute inset-0 z-[1000] bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white transition-opacity duration-300 pointer-events-none"
+          style={{ zIndex: 1000 }}
+        >
+          <div className="flex items-center gap-3 bg-slate-950/95 border border-slate-700/80 px-5 py-3.5 rounded-2xl shadow-2xl">
+            <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="flex flex-col text-left">
+              <span className="font-bold text-sm tracking-wide text-slate-100">Loading Map Data...</span>
+              <span className="text-[11px] text-slate-400">Fetching live coordinates &amp; fill levels</span>
+            </div>
+          </div>
 
-      {/* Free OpenStreetMap tiles */}
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="&copy; OpenStreetMap contributors"
-        maxZoom={19}
-      />
-
-      {/* Blue dashed Polyline connecting Red bins when showRoute is true */}
-      {showRoute && (
-        <Polyline
-          positions={routePositions}
-          color="blue"
-          dashArray="6, 6"
-          weight={3}
-          pathOptions={{
-            color: 'blue',
-            dashArray: '6, 6',
-            weight: 3,
-          }}
-        />
+          {/* Skeleton pulse bar */}
+          <div className="w-64 max-w-[85%] mt-4 space-y-2">
+            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 animate-pulse w-full"></div>
+            </div>
+            <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+              <span>Connecting to IoT Telemetry DB...</span>
+              <span className="text-emerald-400 animate-pulse font-semibold">Syncing</span>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* HTML divIcon markers, color-coded by fill level with interactive React state */}
-      {binList.map((bin) => (
-        <Marker key={`${bin.id}-${bin.fillPct}`} position={bin.pos} icon={bin.icon}>
-          <Popup>
-            <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '150px' }}>
-              <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '4px' }}>
-                {bin.name}
+      <MapContainer
+        center={[18.5204, 73.8567]}
+        zoom={11}
+        style={{ height: '100%', minHeight: height, width: '100%' }}
+      >
+        <MapResizer onReady={onMapReady} isLoading={isLoading} />
+
+        {/* Free OpenStreetMap tiles */}
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
+          maxZoom={19}
+        />
+
+        {/* Blue dashed Polyline connecting Red bins when showRoute is true */}
+        {showRoute && (
+          <Polyline
+            positions={routePositions}
+            color="blue"
+            dashArray="6, 6"
+            weight={3}
+            pathOptions={{
+              color: 'blue',
+              dashArray: '6, 6',
+              weight: 3,
+            }}
+          />
+        )}
+
+        {/* HTML divIcon markers, color-coded by fill level with interactive React state */}
+        {binList.map((bin) => (
+          <Marker key={`${bin.id}-${bin.fillPct}`} position={bin.pos} icon={bin.icon}>
+            <Popup>
+              <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '150px' }}>
+                <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '4px' }}>
+                  {bin.name}
+                </div>
+                <div style={{ fontSize: '12px', color: '#475569' }}>
+                  Fill level: <strong>{bin.fill}</strong>
+                </div>
+                <div style={{ fontSize: '12px', color: '#475569' }}>
+                  Status: <strong>{bin.label}</strong>
+                </div>
               </div>
-              <div style={{ fontSize: '12px', color: '#475569' }}>
-                Fill level: <strong>{bin.fill}</strong>
-              </div>
-              <div style={{ fontSize: '12px', color: '#475569' }}>
-                Status: <strong>{bin.label}</strong>
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
   );
 }
 
