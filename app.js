@@ -175,7 +175,7 @@
     
     // Update Tailwind Dashboard Metrics
     if ($('muniTotalBins')) $('muniTotalBins').innerText = m.total;
-    if ($('muniHighBins')) $('muniHighBins').innerText = state.simulatedAdvanced ? '18 Bins' : '15 Bins';
+    if ($('muniHighBins')) $('muniHighBins').innerText = state.simulatedAdvanced ? '18 Bins Require Collection' : '15 Bins Require Collection';
     if ($('muniWarnBins')) $('muniWarnBins').innerText = state.simulatedAdvanced ? '5 Bins' : '8 Bins';
     if ($('muniLowBins')) $('muniLowBins').innerText = state.simulatedAdvanced ? '2 Bins' : '8 Bins';
     
@@ -539,17 +539,25 @@
   }
 
   function simulateAdvanceTime() {
-    state.simulatedAdvanced = true;
-    state.bins.forEach(bin => {
-        bin.fillPercent = Math.min(100, Math.round(bin.fillPercent + 15));
-        bin.lastCollectedHoursAgo = (bin.lastCollectedHoursAgo || 0) + 6;
-        updateBinCalculations(bin);
-    });
+    state.simulatedAdvanced = !state.simulatedAdvanced;
+    if (state.simulatedAdvanced) {
+      state.bins.forEach(bin => {
+          bin.fillPercent = Math.min(100, Math.round(bin.fillPercent + 15));
+          bin.lastCollectedHoursAgo = (bin.lastCollectedHoursAgo || 0) + 6;
+          updateBinCalculations(bin);
+      });
+      window.dispatchEvent(new CustomEvent('ecoroute:advance-time'));
+      showSimAlert(`⏳ Time advanced 6 hours (+15% waste fill simulated across all bins).`);
+    } else {
+      state.bins = JSON.parse(JSON.stringify(initialBinsState));
+      window.dispatchEvent(new CustomEvent('ecoroute:reset'));
+      showSimAlert(`⏳ Simulation reverted to baseline fill levels.`);
+    }
 
-    window.dispatchEvent(new CustomEvent('ecoroute:advance-time'));
+    if ($('muniHighBins')) {
+      $('muniHighBins').innerText = state.simulatedAdvanced ? '18 Bins Require Collection' : '15 Bins Require Collection';
+    }
 
-    showSimAlert(`⏳ Time advanced 6 hours (+15% waste fill simulated across all bins).`);
-    
     if (state.routeActive) generateEcoRoute();
     else renderDashboard();
   }
@@ -563,6 +571,14 @@
     
     window.dispatchEvent(new CustomEvent('ecoroute:reset'));
     window.dispatchEvent(new CustomEvent('ecoroute:clear'));
+
+    if ($('muniHighBins')) {
+      $('muniHighBins').innerText = '15 Bins Require Collection';
+    }
+    if ($('mapRouteBinCount')) $('mapRouteBinCount').textContent = '0';
+    if ($('optSelectDist')) $('optSelectDist').textContent = '--';
+    if ($('optDistSavings')) $('optDistSavings').textContent = '0.0%';
+    if ($('optCO2Saved')) $('optCO2Saved').textContent = '0.0 kg';
 
     showSimAlert(`🔄 Simulation reset to deterministic baseline.`);
     
@@ -878,6 +894,9 @@
 
       if (view === 'municipal') {
           renderDashboard();
+          if (window.mountReactMap) window.mountReactMap();
+      } else if (view === 'citizen') {
+          if (window.mountCitizenMap) window.mountCitizenMap();
       }
   }
 

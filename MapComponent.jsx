@@ -39,7 +39,7 @@ const redIcon    = makeDivIcon('#ef4444');   // Critical  >= 80%
 const orangeIcon = makeDivIcon('#f97316');   // Warning   50-79%
 const greenIcon  = makeDivIcon('#22c55e');   // Normal    < 50%
 
-const INITIAL_BINS = [
+const BASELINE_BINS = [
   { id: 1, name: 'Pune City Center',          pos: [18.5204, 73.8567], fillPct: 88, fill: '88% (≥80%)',   label: 'Critical',  icon: redIcon    },
   { id: 2, name: 'Karvenagar / Cummins',       pos: [18.4893, 73.8202], fillPct: 62, fill: '62% (50-79%)',  label: 'Warning',   icon: orangeIcon },
   { id: 3, name: 'Hinjewadi IT Park',          pos: [18.5913, 73.7389], fillPct: 35, fill: '35% (<50%)',    label: 'Normal',    icon: greenIcon  },
@@ -47,10 +47,12 @@ const INITIAL_BINS = [
   { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fillPct: 68, fill: '68% (50-79%)',  label: 'Warning',   icon: orangeIcon },
 ];
 
-// Critical / Red bins route coordinates
-const CRITICAL_ROUTE = [
-  [18.5204, 73.8567], // Pune City Center
-  [18.4966, 73.9416], // Hadapsar
+const SIMULATED_BINS = [
+  { id: 1, name: 'Pune City Center',          pos: [18.5204, 73.8567], fillPct: 98, fill: '98% (≥80%)',   label: 'Critical',  icon: redIcon    },
+  { id: 2, name: 'Karvenagar / Cummins',       pos: [18.4893, 73.8202], fillPct: 82, fill: '82% (≥80%)',   label: 'Critical',  icon: redIcon    },
+  { id: 3, name: 'Hinjewadi IT Park',          pos: [18.5913, 73.7389], fillPct: 50, fill: '50% (50-79%)',  label: 'Warning',   icon: orangeIcon },
+  { id: 4, name: 'Hadapsar',                   pos: [18.4966, 73.9416], fillPct: 100, fill: '100% (≥80%)', label: 'Critical',  icon: redIcon    },
+  { id: 5, name: 'Kothrud',                    pos: [18.5074, 73.8151], fillPct: 88, fill: '88% (≥80%)',   label: 'Critical',  icon: redIcon    },
 ];
 
 let _muniMapInstance = null;
@@ -74,67 +76,83 @@ function MapResizer({ onReady }) {
 
 export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   const [showRoute, setShowRoute] = useState(false);
-  const [binList, setBinList] = useState(INITIAL_BINS);
+  const [isSimulated, setIsSimulated] = useState(false);
 
-  // React state logic: update bin fill percentages by +15% when simulation advances
+  const binList = isSimulated ? SIMULATED_BINS : BASELINE_BINS;
+  const redBins = binList.filter((b) => b.label === 'Critical');
+  const routePositions = redBins.map((b) => b.pos);
+
+  // Sync React state with optimization impact stats and high-urgency bin counter
   useEffect(() => {
-    const handleSimulateWaste = () => {
-      setBinList((prev) =>
-        prev.map((b) => {
-          const nextPct = Math.min(100, b.fillPct + 15);
-          const label = nextPct >= 80 ? 'Critical' : nextPct >= 50 ? 'Warning' : 'Normal';
-          const icon = nextPct >= 80 ? redIcon : nextPct >= 50 ? orangeIcon : greenIcon;
-          return {
-            ...b,
-            fillPct: nextPct,
-            fill: `${nextPct}% (${label})`,
-            label,
-            icon,
-          };
-        })
-      );
-    };
+    if (!allowRoute) return;
 
-    const handleResetBins = () => {
-      setBinList(INITIAL_BINS);
-    };
+    const countEl = document.getElementById('mapRouteBinCount');
+    const fixedDistEl = document.getElementById('optFixedDist');
+    const selectDistEl = document.getElementById('optSelectDist');
+    const distSavingsEl = document.getElementById('optDistSavings');
+    const co2SavedEl = document.getElementById('optCO2Saved');
+    const muniHighBins = document.getElementById('muniHighBins');
 
-    window.addEventListener('ecoroute:advance-time', handleSimulateWaste);
-    window.addEventListener('ecoroute:reset', handleResetBins);
+    if (muniHighBins) {
+      muniHighBins.textContent = isSimulated ? '18 Bins Require Collection' : '15 Bins Require Collection';
+    }
 
-    const simButtons = document.querySelectorAll('button[onclick*="simulateAdvanceTime"]');
-    simButtons.forEach((btn) => btn.addEventListener('click', handleSimulateWaste));
+    if (showRoute) {
+      if (countEl) countEl.textContent = redBins.length;
+      if (fixedDistEl) fixedDistEl.textContent = '38.4 km';
+      if (selectDistEl) selectDistEl.textContent = '18.2 km';
+      if (distSavingsEl) distSavingsEl.textContent = '52.6%';
+      if (co2SavedEl) co2SavedEl.textContent = '20.6 kg';
+    } else {
+      if (countEl) countEl.textContent = '0';
+      if (fixedDistEl) fixedDistEl.textContent = '38.4 km';
+      if (selectDistEl) selectDistEl.textContent = '--';
+      if (distSavingsEl) distSavingsEl.textContent = '0.0%';
+      if (co2SavedEl) co2SavedEl.textContent = '0.0 kg';
+    }
+  }, [showRoute, isSimulated, redBins.length, allowRoute]);
 
-    return () => {
-      window.removeEventListener('ecoroute:advance-time', handleSimulateWaste);
-      window.removeEventListener('ecoroute:reset', handleResetBins);
-      simButtons.forEach((btn) => btn.removeEventListener('click', handleSimulateWaste));
-    };
-  }, []);
-
+  // Handle external and DOM triggers
   useEffect(() => {
     if (!allowRoute) return;
 
     window.setMapShowRoute = (val) => setShowRoute(val);
+    window.toggleMapSimulation = () => setIsSimulated((prev) => !prev);
+    window.resetMapSimulation = () => {
+      setIsSimulated(false);
+      setShowRoute(false);
+    };
 
     const handleShowRoute = () => setShowRoute(true);
     const handleClearRoute = () => setShowRoute(false);
+    const handleToggleSim = () => setIsSimulated((prev) => !prev);
+    const handleReset = () => {
+      setIsSimulated(false);
+      setShowRoute(false);
+    };
 
     window.addEventListener('ecoroute:show', handleShowRoute);
     window.addEventListener('ecoroute:clear', handleClearRoute);
+    window.addEventListener('ecoroute:advance-time', handleToggleSim);
+    window.addEventListener('ecoroute:reset', handleReset);
 
     // Attach listeners directly to buttons in the DOM
     const genButtons = document.querySelectorAll('button[onclick*="generateEcoRoute"]');
     const clearButtons = document.querySelectorAll('button[onclick*="resetSimulation"]');
+    const simButtons = document.querySelectorAll('button[onclick*="simulateAdvanceTime"]');
 
     genButtons.forEach((btn) => btn.addEventListener('click', handleShowRoute));
-    clearButtons.forEach((btn) => btn.addEventListener('click', handleClearRoute));
+    clearButtons.forEach((btn) => btn.addEventListener('click', handleReset));
+    simButtons.forEach((btn) => btn.addEventListener('click', handleToggleSim));
 
     return () => {
       window.removeEventListener('ecoroute:show', handleShowRoute);
       window.removeEventListener('ecoroute:clear', handleClearRoute);
+      window.removeEventListener('ecoroute:advance-time', handleToggleSim);
+      window.removeEventListener('ecoroute:reset', handleReset);
       genButtons.forEach((btn) => btn.removeEventListener('click', handleShowRoute));
-      clearButtons.forEach((btn) => btn.removeEventListener('click', handleClearRoute));
+      clearButtons.forEach((btn) => btn.removeEventListener('click', handleReset));
+      simButtons.forEach((btn) => btn.removeEventListener('click', handleToggleSim));
     };
   }, [allowRoute]);
 
@@ -153,10 +171,10 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
         maxZoom={19}
       />
 
-      {/* Polyline connecting critical/red bins when route is active */}
+      {/* Blue dashed Polyline connecting Red bins when showRoute is true */}
       {showRoute && (
         <Polyline
-          positions={CRITICAL_ROUTE}
+          positions={routePositions}
           color="blue"
           dashArray="6, 6"
           weight={3}
