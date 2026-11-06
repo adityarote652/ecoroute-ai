@@ -531,9 +531,11 @@
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Configure bin database, fleet trucks, conversion metrics, and view system audit logs.</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="openAddBinModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5">
-                        <i class="fa-solid fa-plus"></i> Add New Bin
-                    </button>
+                    <div id="adminAddBinButtonRoot" class="inline-flex">
+                        <button onclick="openAddBinModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                            <i class="fa-solid fa-plus"></i> Add New Bin
+                        </button>
+                    </div>
                     <button onclick="triggerBulkImport()" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5">
                         <i class="fa-solid fa-file-import"></i> Bulk CSV Upload
                     </button>
@@ -694,7 +696,9 @@
                         <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
                             <i class="fa-solid fa-truck-front text-indigo-500"></i> Municipal Fleet & Drivers
                         </h3>
-                        <button onclick="openAddTruckModal()" class="text-xs text-indigo-600 font-semibold hover:underline">+ Add Truck</button>
+                        <div id="adminAddTruckButtonRoot" class="inline-flex">
+                            <button onclick="openAddTruckModal()" class="text-xs text-indigo-600 font-semibold hover:underline">+ Add Truck</button>
+                        </div>
                     </div>
 
                     <div class="space-y-3" id="adminTruckList">
@@ -1436,92 +1440,7 @@
 
     </main>
 
-    <!-- MODAL: Add Bin -->
-    <div id="addBinModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 relative">
-            <button onclick="closeAddBinModal()" class="absolute top-4 right-4 text-slate-400 p-2"><i class="fa-solid fa-xmark"></i></button>
-            <h3 class="text-xl font-bold mb-4">Register New Bin Location</h3>
-            <form onsubmit="handleCreateBin(event)" class="space-y-3 text-xs">
-                <div>
-                    <label class="block font-semibold mb-1">Bin Unique ID</label>
-                    <input type="text" id="newBinId" required placeholder="e.g. BIN-26" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1">Location Name / Landmark</label>
-                    <input type="text" id="newBinLocation" required placeholder="e.g. City Bus Terminal Stand 4" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block font-semibold mb-1">Capacity (Liters)</label>
-                        <input type="number" id="newBinCapacity" value="240" required class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
-                    </div>
-                    <div>
-                        <label class="block font-semibold mb-1">Waste Category</label>
-                        <select id="newBinType" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl">
-                            <option value="Wet / Organic">Wet / Organic</option>
-                            <option value="Dry / Recyclable">Dry / Recyclable</option>
-                            <option value="E-Waste">E-Waste</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block font-semibold mb-1">Daily Rate (L/day)</label>
-                        <input type="number" id="newBinRate" value="45" required class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl">
-                    </div>
-                    <div>
-                        <label class="block font-semibold mb-1">Area Risk Priority</label>
-                        <select id="newBinPriority" class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border rounded-xl">
-                            <option value="Commercial Market">Commercial Market (High)</option>
-                            <option value="Hospital / Clinic">Hospital / Clinic (High)</option>
-                            <option value="Bus / Railway Station">Bus / Transit (High)</option>
-                            <option value="Residential Society">Residential (Normal)</option>
-                        </select>
-                    </div>
-                </div>
-                <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md mt-2">Save Bin to System</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: Add Truck -->
-    <div id="addTruckModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 relative">
-            <button onclick="closeAddTruckModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark"></i></button>
-            <h3 class="text-xl font-bold mb-1 text-slate-900 dark:text-white">Register New Municipal Truck</h3>
-            <p class="text-xs text-slate-500 mb-4">Add a new compactor or collection truck to the active municipal fleet.</p>
-            <form onsubmit="handleCreateTruck(event)" class="space-y-3 text-xs">
-                <div>
-                    <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Truck Identification (ID)</label>
-                    <input type="text" id="newTruckId" required placeholder="e.g. TR-03" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Assigned Driver / Depot Location</label>
-                    <input type="text" id="newTruckDriver" required placeholder="e.g. Rajesh Patil (Kothrud Stand)" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Payload Capacity</label>
-                        <input type="text" id="newTruckCapacity" value="4500L" required placeholder="e.g. 4500L" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Vehicle Type / Fleet Class</label>
-                        <select id="newTruckType" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                            <option value="Heavy Compactor">Heavy Compactor</option>
-                            <option value="Electric LCV Compactor">Electric LCV Compactor</option>
-                            <option value="Side-Loader Compactor">Side-Loader Compactor</option>
-                            <option value="Organic Waste Tipper">Organic Waste Tipper</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block font-semibold mb-1 text-slate-700 dark:text-slate-300">Assigned Zone / Target Route</label>
-                    <input type="text" id="newTruckZone" value="Route C • Ward 4" required placeholder="e.g. Route C • Ward 4" class="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                </div>
-                <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md mt-2 transition-all">Add Truck to Fleet</button>
-            </form>
-        </div>
-    </div>
+    <!-- Dynamic React Modals are mounted via AppContext.jsx (AddBinModal & AddTruckModal) -->
 
     <!-- MODAL: Special Bulk Pickup Request -->
     <div id="specialPickupModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
-import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, setDoc, addDoc } from 'firebase/firestore';
 import { db } from './firebase.js';
 
 // ── Initial State Seed Data ──────────────────────────────────────────────────
@@ -338,19 +338,50 @@ class GlobalAppStore {
         this.syncDOM();
       },
 
-      // Modal Add Bin handler: appends new data to Context bins array
+      // Modal Add Bin handler: appends new data to Context bins array & global wardBins
       addBin: (binData) => {
+        const rawId = binData.id || binData.binId || `B-${String(this.state.bins.length + 1).padStart(2, '0')}`;
+        const locName = binData.name || binData.locationName || binData.location || 'Deccan Gymkhana Stand';
+        const cap = binData.capacity ? (String(binData.capacity).endsWith('L') ? binData.capacity : `${binData.capacity}L`) : '1000L';
+        const wasteType = binData.wasteType || 'Organic';
+        const fill = parseInt(binData.fillPct ?? binData.fillPercent ?? binData.baseFill ?? 45, 10) || 45;
+        const status = binData.status || (fill >= 80 ? 'Critical' : fill >= 50 ? 'Warning' : 'Normal');
+
         const newBin = {
-          id: binData.id || `B-${String(this.state.bins.length + 1).padStart(2, '0')}`,
-          name: binData.name || binData.location || 'Deccan Gymkhana Stand',
-          sector: binData.sector || 'Ward 04 • High-Priority Sector',
-          capacity: binData.capacity || '1000L',
-          wasteType: binData.wasteType || 'Organic',
+          id: rawId,
+          code: binData.code || rawId,
+          name: locName,
+          sector: binData.sector || `Ward 12 • ${locName}`,
+          capacity: cap,
+          capacityL: parseInt(cap, 10) || 1000,
+          wasteType: wasteType,
           dailyRate: binData.dailyRate || '85 kg/day',
-          baseFill: parseInt(binData.fillPct, 10) || 85,
-          fillPct: parseInt(binData.fillPct, 10) || 85,
-          status: binData.status || 'Active',
+          baseFill: fill,
+          fillPct: fill,
+          fillPercent: fill,
+          status: status,
+          urgency: fill >= 80 ? 'high' : fill >= 50 ? 'medium' : 'low',
+          pos: binData.pos || [18.5204, 73.8567],
+          lat: binData.lat || (binData.pos ? binData.pos[0] : 18.5204),
+          lng: binData.lng || (binData.pos ? binData.pos[1] : 73.8567),
+          collected: false,
+          lastPickup: binData.lastPickup || 'Just added',
+          priorityScore: fill,
         };
+
+        // Mutate and sync global wardBins if not already present
+        if (typeof window !== 'undefined' && window.wardBins && Array.isArray(window.wardBins)) {
+          const exists = window.wardBins.some(b => String(b.id) === String(newBin.id) || String(b.code) === String(newBin.code));
+          if (!exists) {
+            window.wardBins.push(newBin);
+            if (typeof window.updateMapBins === 'function') {
+              window.updateMapBins([...window.wardBins]);
+            }
+            if (typeof window.renderPriorityListUI === 'function') {
+              window.renderPriorityListUI([...window.wardBins]);
+            }
+          }
+        }
 
         this.setState((prev) => ({
           bins: [...prev.bins, newBin],
@@ -361,12 +392,17 @@ class GlobalAppStore {
 
       // Modal Add Truck handler: appends new data to Context trucks array
       addTruck: (truckData) => {
+        const rawId = truckData.id || truckData.truckId || `Truck TR-0${this.state.trucks.length + 1}`;
+        const driver = truckData.driver || truckData.driverName || 'Anil M.';
+        const cap = truckData.capacity ? (String(truckData.capacity).endsWith('L') ? truckData.capacity : `${truckData.capacity}L`) : '4500L';
+        const zone = truckData.zone || `Route ${String.fromCharCode(65 + this.state.trucks.length)} • Priority Sector`;
+
         const newTruck = {
-          id: truckData.id || `Truck TR-0${this.state.trucks.length + 1}`,
-          driver: truckData.driver || 'Anil M.',
-          capacity: truckData.capacity || '4500L',
+          id: rawId,
+          driver: driver,
+          capacity: cap,
           status: truckData.status || 'Active',
-          zone: truckData.zone || `Route ${String.fromCharCode(65 + this.state.trucks.length)} • Priority Sector`,
+          zone: zone,
         };
 
         this.setState((prev) => ({
@@ -908,22 +944,25 @@ export function AdminTruckListPanel() {
   );
 }
 
-// ── 4. Dynamic Audit Log React Component (every 10 seconds interval) ────────
+// ── 4. Dynamic Audit Log React Component (every 10 seconds interval, max 5 logs) ────────
 export function AdminAuditLogPanel() {
   const [logs, setLogs] = useState([
     { id: 1, time: '[10:00 AM]', tag: 'Driver Shift', text: 'Driver TR-01 accepted dispatched route for Ward 4', icon: 'fa-circle-check', color: 'indigo' },
-    { id: 2, time: '[09:15 AM]', tag: 'Citizen Inbound', text: 'Citizen report #104 logged for Shivajinagar Market', icon: 'fa-triangle-exclamation', color: 'amber' },
-    { id: 3, time: '[08:30 AM]', tag: 'Auto Optimizer', text: 'System auto-generated optimal route for Ward 4 (52.6% saved)', icon: 'fa-route', color: 'emerald' },
+    { id: 2, time: '[09:45 AM]', tag: 'Health Check', text: 'System health check OK', icon: 'fa-heart-pulse', color: 'emerald' },
+    { id: 3, time: '[09:30 AM]', tag: 'Fleet GPS', text: 'Truck TR-02 GPS ping received', icon: 'fa-location-dot', color: 'indigo' },
+    { id: 4, time: '[09:15 AM]', tag: 'Citizen Inbound', text: 'Citizen report #104 logged for Shivajinagar Market', icon: 'fa-triangle-exclamation', color: 'amber' },
+    { id: 5, time: '[08:30 AM]', tag: 'Auto Optimizer', text: 'System auto-generated optimal route for Ward 4 (52.6% saved)', icon: 'fa-route', color: 'emerald' },
   ]);
 
   useEffect(() => {
     const eventsPool = [
-      { tag: 'Health Check', text: 'System health check complete: All 25 bin telemetry streams online', icon: 'fa-heart-pulse', color: 'emerald' },
-      { tag: 'Fleet GPS', text: 'Truck TR-02 GPS ping received at Deccan Gymkhana Stand', icon: 'fa-location-dot', color: 'indigo' },
-      { tag: 'Telemetry Sync', text: 'Ward 4 telemetry stream synced: 25 sensors reporting optimal fill rates', icon: 'fa-tower-broadcast', color: 'teal' },
-      { tag: 'Route Engine', text: 'OSRM street driving route recalibrated: -18.2 km / 20.6 kg CO2 saved', icon: 'fa-route', color: 'blue' },
+      { tag: 'Health Check', text: 'System health check OK', icon: 'fa-heart-pulse', color: 'emerald' },
+      { tag: 'Fleet GPS', text: 'Truck TR-02 GPS ping received', icon: 'fa-location-dot', color: 'indigo' },
+      { tag: 'Telemetry Sync', text: 'IoT fill telemetry received from Ward 4: 25 sensors reporting optimal fill rates', icon: 'fa-tower-broadcast', color: 'teal' },
+      { tag: 'Route Engine', text: 'OSRM street driving route recalibrated (-18.2 km / 20.6 kg CO2 saved)', icon: 'fa-route', color: 'blue' },
       { tag: 'Citizen Bot', text: 'Citizen report verified for Mandai Sub-Ward (+50 Green Points)', icon: 'fa-comments', color: 'amber' },
-      { tag: 'Driver Ping', text: 'Truck TR-01 completed waypoint #2 at Karvenagar Station', icon: 'fa-truck-fast', color: 'emerald' },
+      { tag: 'Sensor Alert', text: 'Sensor B06 battery at 98%', icon: 'fa-battery-full', color: 'emerald' },
+      { tag: 'Fleet Dispatch', text: 'Truck TR-01 completed waypoint #2 at Karvenagar Station', icon: 'fa-truck-fast', color: 'indigo' },
     ];
 
     const timer = setInterval(() => {
@@ -940,8 +979,9 @@ export function AdminAuditLogPanel() {
         color: ev.color,
       };
 
-      setLogs((prev) => [newEntry, ...prev.slice(0, 14)]);
-    }, 10000); // exactly every 10 seconds
+      // Unshift new simulated system log into log array every 10s, strictly limited to 5 most recent
+      setLogs((prev) => [newEntry, ...prev].slice(0, 5));
+    }, 10000); // 10 seconds
 
     return () => clearInterval(timer);
   }, []);
@@ -966,7 +1006,478 @@ export function AdminAuditLogPanel() {
   );
 }
 
-// ── 5. Green Points Wallet React Component ──────────────────────────────────
+// ── 5. Reusable Modal Component (Tailwind centered, semi-transparent overlay) ──
+export function Modal({ isOpen, onClose, title, children }) {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-200 animate-in fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 relative transition-all duration-200 scale-100 animate-in zoom-in-95">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          aria-label="Close modal"
+        >
+          <i className="fa-solid fa-xmark text-base"></i>
+        </button>
+        {title && (
+          <h3 className="text-xl font-bold mb-4 text-slate-900 dark:text-white flex items-center gap-2">
+            {title}
+          </h3>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── 6. Add New Bin Modal Form ──────────────────────────────────────────────────
+export function AddBinModal({ isOpen, onClose }) {
+  const [formData, setFormData] = useState({
+    binId: '',
+    locationName: '',
+    capacity: '1000',
+    wasteType: 'Organic',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const rawId = formData.binId.trim();
+    const formattedId = rawId
+      ? (rawId.toUpperCase().startsWith('B') ? rawId.toUpperCase() : `B${rawId}`)
+      : `B${Math.floor(Math.random() * 80 + 20)}`;
+    const locName = formData.locationName.trim() || 'Pune City Node';
+    const capNum = formData.capacity.trim() || '1000';
+    const formattedCap = capNum.endsWith('L') ? capNum : `${capNum}L`;
+    const wasteType = formData.wasteType || 'Organic';
+
+    // Generates valid Pune coordinates near city center
+    const jitterLat = (Math.random() - 0.5) * 0.05;
+    const jitterLng = (Math.random() - 0.5) * 0.05;
+    const lat = +(18.5204 + jitterLat).toFixed(4);
+    const lng = +(73.8567 + jitterLng).toFixed(4);
+
+    const newBin = {
+      id: formattedId,
+      code: formattedId,
+      name: locName,
+      sector: `Ward 12 • ${locName}`,
+      capacity: formattedCap,
+      capacityL: parseInt(capNum, 10) || 1000,
+      wasteType: wasteType,
+      dailyRate: '95 kg/day',
+      baseFill: 45,
+      fillPct: 45,
+      fillPercent: 45,
+      status: 'Normal',
+      urgency: 'low',
+      pos: [lat, lng],
+      lat: lat,
+      lng: lng,
+      lastPickup: 'Just added',
+      collected: false,
+      priorityScore: 45,
+    };
+
+    // 1. Push into global wardBins array
+    if (typeof window !== 'undefined' && window.wardBins && Array.isArray(window.wardBins)) {
+      window.wardBins.push(newBin);
+      if (typeof window.updateMapBins === 'function') {
+        window.updateMapBins([...window.wardBins]);
+      }
+      if (typeof window.renderPriorityListUI === 'function') {
+        window.renderPriorityListUI([...window.wardBins]);
+      }
+    }
+
+    // 2. Push into Global Context store
+    if (appStore?.actions?.addBin) {
+      appStore.actions.addBin(newBin);
+    }
+
+    // 3. Sync to Firebase collection `bins`
+    try {
+      if (db) {
+        await addDoc(collection(db, 'bins'), {
+          ...newBin,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      console.error('Firestore bin add error:', err);
+    }
+
+    // Reset form state & close modal
+    setFormData({
+      binId: '',
+      locationName: '',
+      capacity: '1000',
+      wasteType: 'Organic',
+    });
+    setIsSubmitting(false);
+    onClose();
+
+    if (typeof window !== 'undefined' && window.showSimAlert) {
+      window.showSimAlert(`✅ Bin ${newBin.id} (${newBin.name}) registered in Global Context!`);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Register New Bin Location">
+      <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <div>
+          <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">
+            Bin ID
+          </label>
+          <input
+            type="text"
+            name="binId"
+            value={formData.binId}
+            onChange={handleChange}
+            required
+            placeholder="e.g. B14 or BIN-14"
+            className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div>
+          <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">
+            Location Name
+          </label>
+          <input
+            type="text"
+            name="locationName"
+            value={formData.locationName}
+            onChange={handleChange}
+            required
+            placeholder="e.g. Deccan Gymkhana Stand"
+            className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">
+              Capacity (L)
+            </label>
+            <input
+              type="number"
+              name="capacity"
+              value={formData.capacity}
+              onChange={handleChange}
+              required
+              min="50"
+              max="5000"
+              placeholder="1000"
+              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">
+              Waste Type
+            </label>
+            <select
+              name="wasteType"
+              value={formData.wasteType}
+              onChange={handleChange}
+              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="Organic">Organic (Wet)</option>
+              <option value="Dry">Dry / Recyclable</option>
+              <option value="Mixed">Mixed Waste</option>
+              <option value="Hazardous">Hazardous / E-Waste</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            {isSubmitting ? (
+              <>
+                <i className="fa-solid fa-spinner fa-spin"></i> Saving...
+              </>
+            ) : (
+              <>
+                <i className="fa-solid fa-plus"></i> Save Bin to System
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// ── 7. Add New Truck Modal Form ────────────────────────────────────────────────
+export function AddTruckModal({ isOpen, onClose }) {
+  const [formData, setFormData] = useState({
+    truckId: '',
+    driverName: '',
+    capacity: '4000',
+    zone: 'Route C • Commercial Ward',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const rawId = formData.truckId.trim();
+    const formattedId = rawId
+      ? (rawId.startsWith('Truck') ? rawId : `Truck ${rawId}`)
+      : `Truck TR-0${Math.floor(Math.random() * 5 + 3)}`;
+    const driver = formData.driverName.trim() || 'Rajesh Patil';
+    const capNum = formData.capacity.trim() || '4000';
+    const formattedCap = capNum.endsWith('L') ? capNum : `${capNum}L`;
+    const zone = formData.zone.trim() || 'Route C • Ward 4';
+
+    const newTruck = {
+      id: formattedId,
+      driver: driver,
+      capacity: formattedCap,
+      status: 'Active',
+      zone: zone,
+    };
+
+    // 1. Push into Global Context store
+    if (appStore?.actions?.addTruck) {
+      appStore.actions.addTruck(newTruck);
+    }
+
+    // 2. Sync to Firebase collection `trucks`
+    try {
+      if (db) {
+        await addDoc(collection(db, 'trucks'), {
+          ...newTruck,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      console.error('Firestore truck add error:', err);
+    }
+
+    // Reset form state & close modal
+    setFormData({
+      truckId: '',
+      driverName: '',
+      capacity: '4000',
+      zone: 'Route C • Commercial Ward',
+    });
+    setIsSubmitting(false);
+    onClose();
+
+    if (typeof window !== 'undefined' && window.showSimAlert) {
+      window.showSimAlert(`🚛 Truck ${newTruck.id} (${newTruck.driver}) added to Fleet!`);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Register New Municipal Truck">
+      <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <div>
+          <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">
+            Truck Identification (ID)
+          </label>
+          <input
+            type="text"
+            name="truckId"
+            value={formData.truckId}
+            onChange={handleChange}
+            required
+            placeholder="e.g. TR-03"
+            className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div>
+          <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">
+            Assigned Driver Name
+          </label>
+          <input
+            type="text"
+            name="driverName"
+            value={formData.driverName}
+            onChange={handleChange}
+            required
+            placeholder="e.g. Rajesh Patil"
+            className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">
+              Payload Capacity (L)
+            </label>
+            <input
+              type="number"
+              name="capacity"
+              value={formData.capacity}
+              onChange={handleChange}
+              required
+              min="500"
+              max="10000"
+              placeholder="4000"
+              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-300">
+              Assigned Zone / Route
+            </label>
+            <input
+              type="text"
+              name="zone"
+              value={formData.zone}
+              onChange={handleChange}
+              required
+              placeholder="Route C • Ward 4"
+              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            {isSubmitting ? (
+              <>
+                <i className="fa-solid fa-spinner fa-spin"></i> Saving...
+              </>
+            ) : (
+              <>
+                <i className="fa-solid fa-truck"></i> Add Truck to Fleet
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// ── 8. Interactive Admin Action Buttons (with Modals) ────────────────────────
+export function AdminAddBinButton() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    const handleClose = () => setIsOpen(false);
+    window.addEventListener('open-add-bin-modal', handleOpen);
+    window.addEventListener('close-add-bin-modal', handleClose);
+    window.openAddBinModal = handleOpen;
+    window.closeAddBinModal = handleClose;
+    return () => {
+      window.removeEventListener('open-add-bin-modal', handleOpen);
+      window.removeEventListener('close-add-bin-modal', handleClose);
+    };
+  }, []);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+      >
+        <i className="fa-solid fa-plus"></i> Add New Bin
+      </button>
+      <AddBinModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
+    </>
+  );
+}
+
+export function AdminAddTruckButton() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    const handleClose = () => setIsOpen(false);
+    window.addEventListener('open-add-truck-modal', handleOpen);
+    window.addEventListener('close-add-truck-modal', handleClose);
+    window.openAddTruckModal = handleOpen;
+    window.closeAddTruckModal = handleClose;
+    return () => {
+      window.removeEventListener('open-add-truck-modal', handleOpen);
+      window.removeEventListener('close-add-truck-modal', handleClose);
+    };
+  }, []);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline cursor-pointer flex items-center gap-1"
+      >
+        <i className="fa-solid fa-plus text-[10px]"></i> Add Truck
+      </button>
+      <AddTruckModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
+    </>
+  );
+}
+
+// ── 9. Green Points Wallet React Component ──────────────────────────────────
 export function CitizenWallet() {
   const { greenPoints } = useApp();
 
@@ -1051,12 +1562,40 @@ export function mountAdminAuditLog() {
   }
 }
 
+export function mountAdminAddBinButton() {
+  const rootEl = document.getElementById('adminAddBinButtonRoot');
+  if (rootEl && !rootEl._reactRoot) {
+    const root = createRoot(rootEl);
+    root.render(
+      <AppProvider>
+        <AdminAddBinButton />
+      </AppProvider>
+    );
+    rootEl._reactRoot = root;
+  }
+}
+
+export function mountAdminAddTruckButton() {
+  const rootEl = document.getElementById('adminAddTruckButtonRoot');
+  if (rootEl && !rootEl._reactRoot) {
+    const root = createRoot(rootEl);
+    root.render(
+      <AppProvider>
+        <AdminAddTruckButton />
+      </AppProvider>
+    );
+    rootEl._reactRoot = root;
+  }
+}
+
 export function mountAllContextPanels() {
   mountCitizenWallet();
   mountMunicipalComplaints();
   mountAdminBinTable();
   mountAdminTruckList();
   mountAdminAuditLog();
+  mountAdminAddBinButton();
+  mountAdminAddTruckButton();
   appStore.syncDOM();
 }
 
@@ -1078,6 +1617,8 @@ if (typeof window !== 'undefined') {
   window.mountAdminBinTable = mountAdminBinTable;
   window.mountAdminTruckList = mountAdminTruckList;
   window.mountAdminAuditLog = mountAdminAuditLog;
+  window.mountAdminAddBinButton = mountAdminAddBinButton;
+  window.mountAdminAddTruckButton = mountAdminAddTruckButton;
   window.mountCitizenWallet = mountCitizenWallet;
   window.mountAllContextPanels = mountAllContextPanels;
 

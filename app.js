@@ -1533,6 +1533,8 @@
         if (window.mountAdminBinTable) window.mountAdminBinTable();
         if (window.mountAdminTruckList) window.mountAdminTruckList();
         if (window.mountAdminAuditLog) window.mountAdminAuditLog();
+        if (window.mountAdminAddBinButton) window.mountAdminAddBinButton();
+        if (window.mountAdminAddTruckButton) window.mountAdminAddTruckButton();
       }, 80);
     }
     if (view === 'driver') {
@@ -1685,135 +1687,29 @@ window.addNewAdminTruck = function() {
   }
 };
 
-// Centered Modal Overlays for Admin Operations
+// Centered Modal Overlays for Admin Operations (delegated to Dynamic React Modals)
 window.openAddBinModal = function() {
-  const m = document.getElementById('addBinModal');
-  if (m) {
-    m.classList.remove('hidden');
-    m.classList.add('flex');
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('open-add-bin-modal'));
   }
 };
 
 window.closeAddBinModal = function() {
-  const m = document.getElementById('addBinModal');
-  if (m) {
-    m.classList.add('hidden');
-    m.classList.remove('flex');
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('close-add-bin-modal'));
   }
-};
-
-window.handleCreateBin = function(e) {
-  if (e) e.preventDefault();
-  const idInput = document.getElementById('newBinId');
-  const locInput = document.getElementById('newBinLocation');
-  const capInput = document.getElementById('newBinCapacity');
-  const typeInput = document.getElementById('newBinType');
-  const rateInput = document.getElementById('newBinRate');
-  const prioInput = document.getElementById('newBinPriority');
-
-  const rawId = idInput?.value?.trim() || `B-${Math.floor(Math.random() * 80 + 26)}`;
-  const binId = rawId.toUpperCase().startsWith('B-') ? rawId.toUpperCase() : `B-${rawId}`;
-  const location = locInput?.value?.trim() || 'Deccan Gymkhana';
-  const capNum = capInput?.value || '1000';
-  const capacity = capNum.endsWith('L') ? capNum : `${capNum}L`;
-  const wasteType = typeInput?.value || 'Organic';
-  const rateNum = rateInput?.value || '85';
-  const dailyRate = `${rateNum} kg/day`;
-  const priority = prioInput?.value || 'Commercial Market';
-
-  const newBin = {
-    id: binId,
-    name: location,
-    sector: `Ward 04 • ${priority}`,
-    capacity: capacity,
-    capacityL: parseInt(capNum, 10) || 1000,
-    wasteType: wasteType,
-    dailyRate: dailyRate,
-    fillPct: 85,
-    status: 'Active',
-    areaType: priority
-  };
-
-  // Sync into AppContext
-  if (window.addBinToContext) {
-    window.addBinToContext(newBin);
-  } else if (window.appStore?.actions?.addBin) {
-    window.appStore.actions.addBin(newBin);
-  }
-
-  // Sync with local state bins if active
-  if (window.state && Array.isArray(window.state.bins)) {
-    window.state.bins.push({
-      ...newBin,
-      fillPercent: 85,
-      urgency: 'high',
-      dailyGenerationRate: parseInt(rateNum, 10) || 85
-    });
-  }
-
-  // Close modal and reset form
-  window.closeAddBinModal();
-  const form = document.querySelector('#addBinModal form');
-  if (form) form.reset();
-
-  const msg = `✅ Bin ${newBin.id} (${newBin.name} • ${newBin.capacity} • ${newBin.wasteType}) added to Global Registry!`;
-  if (window.showSimAlert) window.showSimAlert(msg);
 };
 
 window.openAddTruckModal = function() {
-  const m = document.getElementById('addTruckModal');
-  if (m) {
-    m.classList.remove('hidden');
-    m.classList.add('flex');
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('open-add-truck-modal'));
   }
 };
 
 window.closeAddTruckModal = function() {
-  const m = document.getElementById('addTruckModal');
-  if (m) {
-    m.classList.add('hidden');
-    m.classList.remove('flex');
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('close-add-truck-modal'));
   }
-};
-
-window.handleCreateTruck = function(e) {
-  if (e) e.preventDefault();
-  const idInput = document.getElementById('newTruckId');
-  const driverInput = document.getElementById('newTruckDriver');
-  const capInput = document.getElementById('newTruckCapacity');
-  const typeInput = document.getElementById('newTruckType');
-  const zoneInput = document.getElementById('newTruckZone');
-
-  const idVal = idInput?.value?.trim() || `Truck TR-0${Math.floor(Math.random() * 7 + 3)}`;
-  const driver = driverInput?.value?.trim() || 'Rajesh Patil (Kothrud Stand)';
-  const capVal = capInput?.value?.trim() || '4500L';
-  const capacity = capVal.endsWith('L') ? capVal : `${capVal}L`;
-  const type = typeInput?.value || 'Heavy Compactor';
-  const zone = zoneInput?.value?.trim() || 'Route C • Ward 4';
-
-  const newTruck = {
-    id: idVal,
-    driver: driver,
-    capacity: capacity,
-    zone: zone,
-    status: 'Active',
-    type: type
-  };
-
-  // Sync into AppContext
-  if (window.addTruckToContext) {
-    window.addTruckToContext(newTruck);
-  } else if (window.appStore?.actions?.addTruck) {
-    window.appStore.actions.addTruck(newTruck);
-  }
-
-  // Close modal and reset form
-  window.closeAddTruckModal();
-  const form = document.querySelector('#addTruckModal form');
-  if (form) form.reset();
-
-  const msg = `🚛 Truck ${newTruck.id} (${newTruck.driver} • ${newTruck.capacity}) registered to Fleet List!`;
-  if (window.showSimAlert) window.showSimAlert(msg);
 };
 
 window.triggerBulkImport = function() {
