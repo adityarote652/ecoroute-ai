@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { fetchBinsFromDB } from './firebase.js';
@@ -648,6 +648,10 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   const [isLoading, setIsLoading] = useState(true);
   const [showRoute, setShowRoute] = useState(false);
   const [routePositions, setRoutePositions] = useState([]);
+  const routePath = routePositions;
+  const halfIndex = Math.ceil(routePath.length / 2);
+  const truck1Path = routePath.slice(0, halfIndex + 1);
+  const truck2Path = routePath.slice(halfIndex);
   const [isRoutingLoading, setIsRoutingLoading] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [portalTarget, setPortalTarget] = useState(() => (typeof document !== 'undefined' ? document.getElementById('heatmapToggleRoot') : null));
@@ -1110,19 +1114,51 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
           ))
         ) : (
           <>
-            {/* OSRM Real Street Geometry Polyline */}
-            {showRoute && routePositions.length > 0 && (
-              <Polyline
-                positions={routePositions}
-                color="#2563eb"
-                dashArray="6, 6"
-                weight={4}
-                pathOptions={{
-                  color: '#2563eb',
-                  dashArray: '6, 6',
-                  weight: 4,
-                }}
-              />
+            {/* Multi-Truck Dispatch Simulation: TR-01 Route (Blue) & TR-02 Route (Purple) */}
+            {showRoute && routePath.length > 0 && (
+              <>
+                {/* Truck TR-01 Route Segment (Blue) */}
+                <Polyline
+                  positions={truck1Path}
+                  color="#3b82f6"
+                  dashArray="6, 6"
+                  weight={5}
+                  pathOptions={{
+                    color: '#3b82f6',
+                    dashArray: '6, 6',
+                    weight: 5,
+                  }}
+                >
+                  <Tooltip sticky>TR-01 Route</Tooltip>
+                  <Popup>
+                    <div style={{ fontFamily: 'Inter, sans-serif', padding: '2px' }}>
+                      <strong style={{ color: '#3b82f6', fontSize: '13px' }}>TR-01 Route</strong>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>Assigned Fleet: Truck TR-01 (Capacity: 4.5T)</div>
+                    </div>
+                  </Popup>
+                </Polyline>
+
+                {/* Truck TR-02 Route Segment (Purple) */}
+                <Polyline
+                  positions={truck2Path}
+                  color="#a855f7"
+                  dashArray="6, 6"
+                  weight={5}
+                  pathOptions={{
+                    color: '#a855f7',
+                    dashArray: '6, 6',
+                    weight: 5,
+                  }}
+                >
+                  <Tooltip sticky>TR-02 Route</Tooltip>
+                  <Popup>
+                    <div style={{ fontFamily: 'Inter, sans-serif', padding: '2px' }}>
+                      <strong style={{ color: '#a855f7', fontSize: '13px' }}>TR-02 Route</strong>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>Assigned Fleet: Truck TR-02 (Capacity: 3.2T)</div>
+                    </div>
+                  </Popup>
+                </Polyline>
+              </>
             )}
 
             {/* Permanent Facility 1: Truck Depot (Start) [18.5500, 73.8000] */}

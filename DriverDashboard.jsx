@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useApp, AppProvider, appStore } from './AppContext.jsx';
@@ -643,19 +643,53 @@ export function DriverDashboard() {
               </Marker>
             ))}
 
-            {/* OSRM Driving Street Geometry Polyline */}
-            {routeCoords && routeCoords.length > 0 && (
-              <Polyline
-                positions={routeCoords}
-                pathOptions={{
-                  color: '#0284c7',
-                  weight: 7,
-                  opacity: 0.9,
-                  lineJoin: 'round',
-                  lineCap: 'round',
-                }}
-              />
-            )}
+            {/* OSRM Driving Street Geometry Polyline - Multi-Truck Dispatch */}
+            {routeCoords && routeCoords.length > 0 && (() => {
+              const routePath = routeCoords;
+              const halfIndex = Math.ceil(routePath.length / 2);
+              const truck1Path = routePath.slice(0, halfIndex + 1);
+              const truck2Path = routePath.slice(halfIndex);
+
+              return (
+                <>
+                  {/* Truck 1 Path (Blue) */}
+                  <Polyline
+                    positions={truck1Path}
+                    color="#3b82f6"
+                    pathOptions={{
+                      color: '#3b82f6',
+                      weight: 7,
+                      opacity: 0.9,
+                      lineJoin: 'round',
+                      lineCap: 'round',
+                    }}
+                  >
+                    <Tooltip sticky>TR-01 Route</Tooltip>
+                    <Popup>
+                      <div className="p-1 font-bold text-xs text-blue-600">TR-01 Route</div>
+                    </Popup>
+                  </Polyline>
+
+                  {/* Truck 2 Path (Purple) */}
+                  <Polyline
+                    positions={truck2Path}
+                    color="#a855f7"
+                    pathOptions={{
+                      color: '#a855f7',
+                      weight: 7,
+                      opacity: 0.9,
+                      lineJoin: 'round',
+                      lineCap: 'round',
+                    }}
+                  >
+                    <Tooltip sticky>TR-02 Route</Tooltip>
+                    <Popup>
+                      <div className="p-1 font-bold text-xs text-purple-600">TR-02 Route</div>
+                    </Popup>
+                  </Polyline>
+                </>
+              );
+            })()}
           </MapContainer>
         </div>
       </div>
