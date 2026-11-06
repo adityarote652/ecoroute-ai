@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useApp, AppProvider, appStore } from './AppContext.jsx';
+import { db, updateBinStatusInDB } from './firebase.js';
+import { doc, setDoc } from 'firebase/firestore';
 
 // ── In-Cabin Web Audio Synthesizer Chimes ───────────────────────────────────
 function playCollectChime() {
@@ -136,10 +138,24 @@ function createPlantMarkerIcon() {
 // ── Map Viewport Adjuster ───────────────────────────────────────────────────
 function MapController({ center, zoom, bounds }) {
   const map = useMap();
+
   useEffect(() => {
     map.invalidateSize();
-    const t = setTimeout(() => map.invalidateSize(), 150);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => map.invalidateSize(), 150);
+    const t2 = setTimeout(() => map.invalidateSize(), 500);
+
+    const handleResize = () => {
+      if (map) map.invalidateSize();
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('view:switched', handleResize);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('view:switched', handleResize);
+    };
   }, [map]);
 
   useEffect(() => {
@@ -183,6 +199,7 @@ export function DriverDashboard() {
 
   const [truckPos, setTruckPos] = useState(TRUCK_DEPOT.pos); // Live Truck Position starts at Depot
   const [bannerNotice, setBannerNotice] = useState(null);
+  const [isUpdatingDb, setIsUpdatingDb] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(26);
   const [currentTime, setCurrentTime] = useState('');
   const mapRef = useRef(null);
@@ -217,6 +234,13 @@ export function DriverDashboard() {
     });
   }, [criticalBins, bins]);
 
+  // Local Driver Queue state to ensure zero-latency immediate removal upon collection
+  const [localQueue, setLocalQueue] = useState([]);
+
+  useEffect(() => {
+    setLocalQueue(activeCriticalBins);
+  }, [activeCriticalBins]);
+
   // Collected Bins (turned to Normal / Green)
   const collectedBins = useMemo(() => {
     return (bins || []).filter((b) => {
@@ -225,8 +249,8 @@ export function DriverDashboard() {
     });
   }, [bins]);
 
-  // The immediate Next Target Bin is the first uncollected bin
-  const currentTargetBin = activeCriticalBins[0] || null;
+  // The immediate Next Target Bin is the first bin in the driver's local queue
+  const currentTargetBin = localQueue[0] || null;
 
   // The Driver map reads routePath directly from Global Context (does NOT generate its own route)
   const routeCoords = routePath && routePath.length > 0 ? routePath : [];
@@ -235,7 +259,7 @@ export function DriverDashboard() {
   const mapBounds = useMemo(() => {
     const pts = [truckPos, TRUCK_DEPOT.pos, RECYCLING_PLANT.pos];
     if (currentTargetBin && currentTargetBin.pos) pts.push(currentTargetBin.pos);
-    activeCriticalBins.forEach((b) => {
+    localQueue.forEach((b) => {
       if (b.pos) pts.push(b.pos);
     });
     if (routeCoords && routeCoords.length > 0) {
@@ -243,16 +267,69 @@ export function DriverDashboard() {
       pts.push(routeCoords[routeCoords.length - 1]);
     }
     return pts;
-  }, [truckPos, currentTargetBin, activeCriticalBins, routeCoords]);
+  }, [truckPos, currentTargetBin, localQueue, routeCoords]);
 
-  // ── CORE ACTION: "Mark Current Bin Collected" ──────────────────────────────
-  const handleMarkCurrentBinCollected = () => {
+  // ── CORE ACTION: "Mark Bin Collected" (Database Write & Closed Loop Sync) ────
+  const handleMarkBinCollected = async () => {
     if (!currentTargetBin) return;
 
     const collectedTarget = currentTargetBin;
     const binId = collectedTarget.id || collectedTarget.code;
+    const normalizedId = String(binId).trim().toUpperCase();
 
-    // 1. Update Global Context & Firebase:
+    setIsUpdatingDb(true);
+
+    // 1. Immediately remove from driver's local queue for instant zero-latency UI transition
+    setLocalQueue((prevQueue) =>
+      prevQueue.filter((b) => {
+        const id = String(b.id || b.code).trim().toUpperCase();
+        return id !== normalizedId;
+      })
+    );
+
+    // 2. Advance simulated truck position to this bin's location
+    if (collectedTarget.pos) {
+      setTruckPos(collectedTarget.pos);
+    }
+
+    // 3. Play audio chime and trigger in-cab haptic feedback
+    playCollectChime();
+
+    // 4. Trigger Firebase Firestore Write (The Closed Loop)
+    try {
+      // Direct update via firebase.js helper
+      if (typeof updateBinStatusInDB === 'function') {
+        await updateBinStatusInDB(binId, {
+          status: 'Normal',
+          fillPct: 0,
+          fillPercent: 0,
+          collected: true,
+          lastPickup: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        });
+      }
+
+      // Direct Firestore document update if db is initialized
+      if (db) {
+        const binDocRef = doc(db, 'bins', String(binId));
+        await setDoc(
+          binDocRef,
+          {
+            id: String(binId),
+            status: 'Normal',
+            fillPct: 0,
+            fillPercent: 0,
+            collected: true,
+            lastPickup: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      }
+    } catch (dbErr) {
+      console.warn('Firestore database write notice:', dbErr);
+    }
+
+    // 5. Update Global Context / Store:
     //    - Removes bin from driver's active route array (criticalBins)
     //    - Updates bin status to "Normal", fill level to 0%, and color to Green
     //    - Clears Red marker on Municipal map and removes from Priority Collection List without refresh
@@ -264,34 +341,52 @@ export function DriverDashboard() {
       window.markBinCollectedInContext(binId);
     }
 
-    // 2. Advance simulated truck position to this bin's location
-    if (collectedTarget.pos) {
-      setTruckPos(collectedTarget.pos);
+    // 6. Mutate window.wardBins so Municipal Map and Priority Collection List instantly sync
+    if (typeof window !== 'undefined' && window.wardBins && Array.isArray(window.wardBins)) {
+      window.wardBins.forEach((b) => {
+        if (
+          String(b.id).toUpperCase() === normalizedId ||
+          String(b.code).toUpperCase() === normalizedId ||
+          String(b.id).replace(/[^a-zA-Z0-9]/g, '') === normalizedId.replace(/[^a-zA-Z0-9]/g, '')
+        ) {
+          b.fillPct = 0;
+          b.fillPercent = 0;
+          b.status = 'Normal';
+          b.collected = true;
+          b.lastPickup = 'Just now';
+          if (window.greenIcon) b.icon = window.greenIcon;
+        }
+      });
+      if (typeof window.updateMapBins === 'function') {
+        window.updateMapBins([...window.wardBins]);
+      }
+      if (typeof window.renderPriorityListUI === 'function') {
+        window.renderPriorityListUI([...window.wardBins]);
+      }
     }
 
-    // 3. Play audio chime feedback
-    playCollectChime();
+    setIsUpdatingDb(false);
 
-    // 4. Temporary banner feedback for in-cab tablet
-    const remainingCount = activeCriticalBins.length - 1;
+    // 7. Dynamic tablet banner feedback
+    const remainingCount = localQueue.length - 1;
     if (remainingCount > 0) {
       setBannerNotice({
         type: 'success',
         title: `Stop Collected: ${collectedTarget.name} (${binId})`,
-        message: `Status updated to Normal (Green) • Fill level reset to 0%. Cleared from active route (${remainingCount} stops remaining).`,
+        message: `Status updated to Normal (Green) • Fill level 0% • Sync dispatched to Municipal & Firebase (${remainingCount} stops remaining).`,
       });
     } else {
       playCompletionFanfare();
       setBannerNotice({
         type: 'done',
         title: `🎉 All Assigned Bins Collected!`,
-        message: `Dispatched route complete! All critical bins cleared from active queue. Proceed to Municipal Recycling Plant for offloading.`,
+        message: `Dispatched route complete! All critical bins returned to Normal. Proceed to Municipal Recycling Plant (Ramtekdi) for offloading.`,
       });
     }
 
     setTimeout(() => {
       setBannerNotice(null);
-    }, 6000);
+    }, 5000);
   };
 
   // Reset route for demo testing
@@ -321,10 +416,10 @@ export function DriverDashboard() {
   };
 
   return (
-    <div className="w-full min-h-[92vh] flex flex-col bg-slate-950 text-white font-sans select-none pb-4">
+    <div className="w-full min-h-[92vh] flex flex-col bg-slate-950 text-white font-sans select-none rounded-3xl overflow-hidden border-2 border-slate-800 shadow-2xl pb-4">
       
-      {/* ── TOP TABLET HUD BAR (Large, glanceable for mounted tablet) ───────── */}
-      <div className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-lg sticky top-0 z-30">
+      {/* ── 1. TOP TABLET HUD BAR (Large, glanceable for mounted tablet) ───────── */}
+      <div className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-lg sticky top-0 z-30">
         
         {/* Left: Truck Identity & GPS Ping */}
         <div className="flex items-center gap-3.5">
@@ -364,7 +459,7 @@ export function DriverDashboard() {
           <div>
             <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Assigned Remaining</div>
             <div className="text-lg font-black font-mono text-amber-400">
-              {activeCriticalBins.length} <span className="text-xs text-slate-400 font-normal">Stops</span>
+              {localQueue.length} <span className="text-xs text-slate-400 font-normal">Stops</span>
             </div>
           </div>
         </div>
@@ -377,7 +472,7 @@ export function DriverDashboard() {
           </div>
           <button
             onClick={handleRecenterOnTruck}
-            className="p-3 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-2xl border border-slate-700 transition-all flex items-center gap-2 text-xs font-bold"
+            className="p-3 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-2xl border border-slate-700 transition-all flex items-center gap-2 text-xs font-bold active:scale-95"
             title="Recenter on Truck Position"
           >
             <i className="fa-solid fa-location-crosshairs text-base"></i>
@@ -387,7 +482,7 @@ export function DriverDashboard() {
             onClick={() => {
               if (window.switchView) window.switchView('municipal');
             }}
-            className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl border border-slate-700 transition-all text-xs font-bold flex items-center gap-1.5"
+            className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl border border-slate-700 transition-all text-xs font-bold flex items-center gap-1.5 active:scale-95"
             title="Exit Driver Tablet Mode"
           >
             <i className="fa-solid fa-arrow-right-from-bracket"></i>
@@ -399,7 +494,7 @@ export function DriverDashboard() {
       {/* ── DYNAMIC NOTIFICATION BANNER ──────────────────────────────────────── */}
       {bannerNotice && (
         <div
-          className={`mx-4 sm:mx-6 mt-3 p-4 rounded-2xl border flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3 duration-300 shadow-xl ${
+          className={`mx-4 sm:px-6 mt-3 p-4 rounded-2xl border flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3 duration-300 shadow-xl ${
             bannerNotice.type === 'done'
               ? 'bg-gradient-to-r from-emerald-900 to-teal-900 border-emerald-500 text-emerald-100'
               : 'bg-gradient-to-r from-sky-950 to-slate-900 border-sky-500 text-sky-100'
@@ -423,88 +518,8 @@ export function DriverDashboard() {
         </div>
       )}
 
-      {/* ── CURRENT TURN-BY-TURN GUIDANCE CARD ───────────────────────────────── */}
-      <div className="px-4 sm:px-6 pt-3 pb-2">
-        {currentTargetBin ? (
-          <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-rose-950/40 rounded-3xl p-4 sm:p-5 border-2 border-rose-500/60 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-            
-            {/* Target Details */}
-            <div className="flex items-start sm:items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-rose-600 text-white flex items-center justify-center text-2xl font-black shadow-lg shadow-rose-600/40 flex-shrink-0 animate-bounce">
-                <i className="fa-solid fa-diamond-turn-right"></i>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-500 text-white tracking-wide uppercase">
-                    NEXT STOP #1 of {activeCriticalBins.length}
-                  </span>
-                  <span className="font-mono text-xs font-bold text-rose-300">
-                    ID: {currentTargetBin.id}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-950 text-red-200 border border-red-700">
-                    CRITICAL ({currentTargetBin.fillPct}% FULL)
-                  </span>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
-                  {currentTargetBin.name}
-                </h3>
-                <div className="text-xs text-slate-300 mt-0.5 flex items-center gap-2 flex-wrap">
-                  <span>Sector: <strong>{currentTargetBin.sector}</strong></span>
-                  <span>•</span>
-                  <span>Type: <strong className="text-emerald-400">{currentTargetBin.wasteType}</strong></span>
-                  <span>•</span>
-                  <span>Cap: <strong>{currentTargetBin.capacity}</strong></span>
-                </div>
-              </div>
-            </div>
-
-            {/* OSRM Route Navigation Stats */}
-            <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-800">
-              <div className="text-left md:text-right">
-                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Drive Distance</div>
-                <div className="text-xl sm:text-2xl font-black font-mono text-sky-400">
-                  {routeStats.distanceKm} <span className="text-xs font-medium text-slate-400">km</span>
-                </div>
-              </div>
-              <div className="text-left md:text-right">
-                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Est. Travel Time</div>
-                <div className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
-                  ~{routeStats.durationMin} <span className="text-xs font-medium text-slate-400">mins</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 rounded-3xl p-5 border-2 border-emerald-500/60 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-3xl font-black shadow-lg shadow-emerald-600/40 flex-shrink-0">
-                <i className="fa-solid fa-flag-checkered"></i>
-              </div>
-              <div>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500 text-slate-950 tracking-wide uppercase">
-                  ROUTE A COMPLETED
-                </span>
-                <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
-                  All Critical Bins Cleared &amp; Collected!
-                </h3>
-                <p className="text-xs text-slate-300 mt-0.5">
-                  Route A queue is fully cleared. Head back to Central Municipal Depot for offloading.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleResetRoute}
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 text-xs font-bold rounded-xl border border-emerald-500/40 transition-all flex items-center gap-2 flex-shrink-0"
-            >
-              <i className="fa-solid fa-rotate-left"></i>
-              <span>Reset Route for Demo</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ── LARGE TABLET LEAFLET MAP CONTAINER ──────────────────────────────── */}
-      <div className="px-4 sm:px-6 flex-1 flex flex-col min-h-[460px] sm:min-h-[520px] relative mt-2">
+      {/* ── 2. LARGE TABLET LEAFLET MAP CONTAINER ──────────────────────────────── */}
+      <div className="px-4 sm:px-6 flex-1 flex flex-col min-h-[440px] sm:min-h-[500px] relative mt-3">
         <div className="w-full flex-1 rounded-3xl overflow-hidden border-2 border-slate-800 shadow-2xl relative bg-slate-900">
           
           {/* Dispatched Route Status Overlay */}
@@ -512,7 +527,7 @@ export function DriverDashboard() {
             <i className="fa-solid fa-route text-sky-400"></i>
             <span>
               {routeCoords.length > 0
-                ? `Municipal Route Dispatched: ${routeStats.distanceKm} km • ${routeStats.durationMin}m`
+                ? `Municipal Route Dispatched: ${routeStats.distanceKm} km • ~${routeStats.durationMin}m`
                 : 'Awaiting Municipal Dispatch'}
             </span>
           </div>
@@ -521,7 +536,7 @@ export function DriverDashboard() {
           <div className="absolute top-4 right-4 z-[500] flex flex-col gap-2">
             <div className="px-3 py-1.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-[11px] font-bold text-slate-200 shadow-lg flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-              <span>{activeCriticalBins.length} Critical Pending</span>
+              <span>{localQueue.length} Critical Pending</span>
             </div>
             <div className="px-3 py-1.5 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 text-[11px] font-bold text-emerald-400 shadow-lg flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
@@ -532,7 +547,7 @@ export function DriverDashboard() {
           <MapContainer
             center={truckPos}
             zoom={15}
-            style={{ width: '100%', height: '100%', minHeight: '460px' }}
+            style={{ width: '100%', height: '100%', minHeight: '440px' }}
             zoomControl={false}
             ref={mapRef}
           >
@@ -574,7 +589,7 @@ export function DriverDashboard() {
             </Marker>
 
             {/* Critical Uncollected Bins (Red Pulsing Waypoints) */}
-            {activeCriticalBins.map((bin, idx) => {
+            {localQueue.map((bin, idx) => {
               const isCurrent = currentTargetBin && currentTargetBin.id === bin.id;
               return (
                 <Marker
@@ -645,26 +660,102 @@ export function DriverDashboard() {
         </div>
       </div>
 
-      {/* ── PROMINENT BOTTOM TABLET CONTROL BUTTON (Oversized for in-cab mount) */}
-      <div className="px-4 sm:px-6 pt-4">
+      {/* ── 3. BELOW THE MAP: NEXT STOP DETAILS & THE ACTION BUTTON ────────────── */}
+      <div className="px-4 sm:px-6 pt-4 space-y-3">
         {currentTargetBin ? (
-          <button
-            onClick={handleMarkCurrentBinCollected}
-            className="w-full py-5 sm:py-7 px-6 sm:px-8 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xl sm:text-2xl md:text-3xl rounded-3xl shadow-2xl shadow-emerald-500/40 active:scale-[0.98] transition-all flex items-center justify-center gap-4 border-4 border-emerald-300 ring-4 ring-emerald-500/20"
-          >
-            <i className="fa-solid fa-circle-check text-2xl sm:text-3xl md:text-4xl text-slate-950 flex-shrink-0 animate-pulse"></i>
-            <span className="tracking-tight text-center">
-              MARK CURRENT BIN COLLECTED ({currentTargetBin.id} • {currentTargetBin.name.split(' ')[0]})
-            </span>
-          </button>
+          <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-rose-950/40 rounded-3xl p-5 sm:p-6 border-2 border-rose-500/60 shadow-2xl space-y-4">
+            
+            {/* Next Stop Details Grid */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              
+              {/* Left: Stop Icon & Identification */}
+              <div className="flex items-start sm:items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-rose-600 text-white flex items-center justify-center text-3xl font-black shadow-lg shadow-rose-600/40 flex-shrink-0 animate-bounce">
+                  <i className="fa-solid fa-location-dot"></i>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-3 py-1 rounded-full text-xs font-black bg-rose-500 text-white tracking-wider uppercase">
+                      NEXT STOP #1 of {localQueue.length}
+                    </span>
+                    <span className="font-mono text-sm font-extrabold text-rose-300 bg-rose-950/60 px-2.5 py-0.5 rounded-lg border border-rose-800">
+                      ID: {currentTargetBin.id}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-red-950 text-red-200 border border-red-700 animate-pulse">
+                      CRITICAL ({currentTargetBin.fillPct}% FULL)
+                    </span>
+                  </div>
+                  <h3 className="text-2xl sm:text-3xl font-black text-white mt-1.5 tracking-tight">
+                    {currentTargetBin.name}
+                  </h3>
+                  <div className="text-xs sm:text-sm text-slate-300 mt-1 flex items-center gap-3 flex-wrap">
+                    <span>Sector: <strong className="text-white">{currentTargetBin.sector}</strong></span>
+                    <span>•</span>
+                    <span>Waste Type: <strong className="text-emerald-400">{currentTargetBin.wasteType}</strong></span>
+                    <span>•</span>
+                    <span>Capacity: <strong className="text-sky-300">{currentTargetBin.capacity}</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Route Telemetry to this stop */}
+              <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-800">
+                <div className="text-left md:text-right">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Drive Distance</div>
+                  <div className="text-2xl sm:text-3xl font-black font-mono text-sky-400">
+                    {routeStats.distanceKm} <span className="text-xs font-medium text-slate-400">km</span>
+                  </div>
+                </div>
+                <div className="text-left md:text-right">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Est. Travel Time</div>
+                  <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
+                    ~{routeStats.durationMin} <span className="text-xs font-medium text-slate-400">mins</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* MASSIVE PROMINENT ACTION BUTTON: "Mark Bin Collected" */}
+            <button
+              onClick={handleMarkBinCollected}
+              disabled={isUpdatingDb}
+              className="w-full py-6 sm:py-7 px-8 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-2xl sm:text-3xl rounded-3xl shadow-2xl shadow-emerald-500/50 active:scale-[0.98] transition-all flex items-center justify-center gap-4 border-4 border-emerald-300 ring-4 ring-emerald-500/20 cursor-pointer disabled:opacity-50"
+            >
+              <i className="fa-solid fa-circle-check text-3xl sm:text-4xl text-slate-950 flex-shrink-0 animate-pulse"></i>
+              <span className="tracking-tight text-center">
+                {isUpdatingDb ? 'Updating Firebase...' : 'Mark Bin Collected'}
+              </span>
+            </button>
+
+            <div className="text-center text-xs text-slate-400 font-medium">
+              Tapping updates status to <strong className="text-emerald-400">Normal (Green)</strong>, resets fill to <strong className="text-emerald-400">0%</strong>, and writes to Firebase &amp; Municipal Hub.
+            </div>
+
+          </div>
         ) : (
-          <button
-            onClick={handleResetRoute}
-            className="w-full py-5 sm:py-6 px-6 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-black text-xl sm:text-2xl rounded-3xl shadow-2xl shadow-sky-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 border-2 border-sky-400"
-          >
-            <i className="fa-solid fa-rotate-left text-2xl"></i>
-            <span>ALL BINS COLLECTED — TAP TO RELOAD ROUTE SIMULATION</span>
-          </button>
+          <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 rounded-3xl p-6 sm:p-8 border-2 border-emerald-500/60 shadow-2xl space-y-4 text-center">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-3xl font-black shadow-lg shadow-emerald-600/40">
+              <i className="fa-solid fa-flag-checkered"></i>
+            </div>
+            <div>
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500 text-slate-950 tracking-wider uppercase">
+                ROUTE A COMPLETED
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-black text-white mt-2">
+                All Assigned Bins Cleared &amp; Collected!
+              </h3>
+              <p className="text-sm text-slate-300 mt-1 max-w-xl mx-auto">
+                Every critical bin on Route A has been collected, reset to Normal (Green), and recorded in Firebase. Proceed to the <strong>Municipal Recycling Plant (Ramtekdi Center)</strong> for payload offloading.
+              </p>
+            </div>
+            <button
+              onClick={handleResetRoute}
+              className="py-4 px-8 bg-slate-800 hover:bg-slate-700 text-emerald-300 text-base font-bold rounded-2xl border border-emerald-500/40 transition-all inline-flex items-center gap-3 active:scale-95 shadow-lg"
+            >
+              <i className="fa-solid fa-rotate-left"></i>
+              <span>Reload Route Simulation for Testing</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -689,6 +780,11 @@ export function mountDriverDashboard() {
 if (typeof window !== 'undefined') {
   window.mountDriverDashboard = mountDriverDashboard;
   window.DriverDashboard = DriverDashboard;
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    mountDriverDashboard();
+  } else {
+    document.addEventListener('DOMContentLoaded', mountDriverDashboard);
+  }
 }
 
 export default DriverDashboard;
