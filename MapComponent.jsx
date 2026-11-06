@@ -417,14 +417,204 @@ if (typeof window !== 'undefined') {
   window.renderPriorityList = renderPriorityListUI;
 }
 
+// ── Prediction & Time Advance Simulation Engine ──────────────────────────────
+// Iterates through wardBins, randomly increases each fill by 15% to 25% (simulating +6h waste generation),
+// caps at 100%, dynamically updates status (>=80% Critical/Red, 50-79% Warning/Orange, <50% Normal/Green),
+// updates the map markers immediately, and resorts the Priority Collection List.
+export function simulateTimeAdvance() {
+  const sourceBins = (window.wardBins && window.wardBins.length) ? window.wardBins : wardBins;
+
+  const updatedBins = sourceBins.map((bin) => {
+    const currentFill = typeof bin.fillPct === 'number'
+      ? bin.fillPct
+      : (typeof bin.fillPercent === 'number' ? bin.fillPercent : (bin.baseFill || 50));
+
+    // Random increase of 15% to 25% (simulating 6 hours of waste generation)
+    const randomIncrease = Math.floor(Math.random() * (25 - 15 + 1)) + 15;
+    const newFill = Math.min(100, currentFill + randomIncrease);
+
+    // Dynamic Status Update
+    // if >= 80%: "Critical" and Red marker icon
+    // if 50% - 79%: "Warning" and Orange marker icon
+    // else (< 50%): "Normal" and Green marker icon
+    const isCritical = newFill >= 80;
+    const isWarning = newFill >= 50 && newFill < 80;
+
+    const status = isCritical ? 'Critical' : isWarning ? 'Warning' : 'Normal';
+    const label = status;
+    const icon = isCritical ? redIcon : isWarning ? orangeIcon : greenIcon;
+    const urgency = isCritical ? 'high' : isWarning ? 'medium' : 'low';
+    const fill = `${newFill}% (${isCritical ? '≥80%' : isWarning ? '50-79%' : '<50%'})`;
+    const priorityScore = Math.min(100, newFill + (isCritical ? 10 : 5));
+
+    return {
+      ...bin,
+      fillPct: newFill,
+      fillPercent: newFill,
+      status,
+      label,
+      icon,
+      urgency,
+      fill,
+      priorityScore,
+    };
+  });
+
+  // Save updated array to window.wardBins and mutate exported wardBins in-place
+  window.wardBins = updatedBins;
+  updatedBins.forEach((ub, i) => {
+    if (wardBins[i]) Object.assign(wardBins[i], ub);
+  });
+
+  // Update PuneMap React state so map markers immediately change colors
+  if (typeof window.updateMapBins === 'function') {
+    window.updateMapBins(updatedBins);
+  }
+
+  // Update Priority Collection List instantly bringing newly Red bins to the top
+  renderPriorityListUI(updatedBins);
+
+  // Sync into AppContext so Admin Registry reflects the updated statuses
+  if (window.appStore) {
+    window.appStore.setState((prev) => ({
+      ...prev,
+      isSimulated: true,
+      bins: prev.bins.map((b) => {
+        const matching = updatedBins.find((ub) => ub.code === b.code || ub.id === b.id || ub.name === b.name);
+        if (matching) {
+          return {
+            ...b,
+            fillPct: matching.fillPct,
+            fillPercent: matching.fillPct,
+            status: matching.status === 'Critical' ? 'Critical (≥80% Dispatch)' : matching.status === 'Warning' ? 'Warning (50-79%)' : 'Normal (<50%)',
+          };
+        }
+        const inc = Math.floor(Math.random() * (25 - 15 + 1)) + 15;
+        const newPct = Math.min(100, (b.fillPct || b.baseFill || 50) + inc);
+        return {
+          ...b,
+          fillPct: newPct,
+          fillPercent: newPct,
+          status: newPct >= 80 ? 'Critical (≥80% Dispatch)' : newPct >= 50 ? 'Warning (50-79%)' : 'Normal (<50%)',
+        };
+      })
+    }));
+    window.appStore.syncDOM();
+  }
+
+  // Sync into legacy state.bins if active
+  if (window.state && Array.isArray(window.state.bins)) {
+    window.state.bins.forEach((b) => {
+      const match = updatedBins.find((ub) => ub.code === b.code || ub.id === b.id || ub.name === b.name);
+      if (match) {
+        b.fillPercent = match.fillPct;
+        b.fillPct = match.fillPct;
+        b.status = match.status.toLowerCase();
+        b.urgency = match.urgency;
+      }
+    });
+  }
+
+  // Update Municipal Dashboard header KPI counters
+  const criticalCount = updatedBins.filter((b) => b.fillPct >= 80).length;
+  const warningCount = updatedBins.filter((b) => b.fillPct >= 50 && b.fillPct < 80).length;
+  const normalCount = updatedBins.filter((b) => b.fillPct < 50).length;
+
+  const muniHighBinsEl = document.getElementById('muniHighBins');
+  const muniWarnBinsEl = document.getElementById('muniWarnBins');
+  const muniLowBinsEl = document.getElementById('muniLowBins');
+
+  if (muniHighBinsEl) muniHighBinsEl.textContent = `${criticalCount} Bins Require Collection`;
+  if (muniWarnBinsEl) muniWarnBinsEl.textContent = `${warningCount} Bins`;
+  if (muniLowBinsEl) muniLowBinsEl.textContent = `${normalCount} Bins`;
+
+  // Dispatch custom event for any other subscribers
+  window.dispatchEvent(new CustomEvent('ecoroute:advance-time', { detail: updatedBins }));
+
+  // Show Toast Alert
+  const msg = `⏳ Simulated +6h Waste: Bins generated 15-25% more waste. ${criticalCount} bins are now Critical!`;
+  if (typeof window.showSimAlert === 'function') {
+    window.showSimAlert(msg);
+  }
+
+  return updatedBins;
+}
+
+export function resetTimeSimulation() {
+  const resetBins = wardBins.map((bin) => {
+    const baseFill = bin.baseFill || 60;
+    const isCritical = baseFill >= 80;
+    const isWarning = baseFill >= 50 && baseFill < 80;
+    const status = isCritical ? 'Critical' : isWarning ? 'Warning' : 'Normal';
+    const label = status;
+    const icon = isCritical ? redIcon : isWarning ? orangeIcon : greenIcon;
+    const urgency = isCritical ? 'high' : isWarning ? 'medium' : 'low';
+    const fill = `${baseFill}% (${isCritical ? '≥80%' : isWarning ? '50-79%' : '<50%'})`;
+    const priorityScore = Math.min(100, baseFill + (isCritical ? 10 : 5));
+
+    return {
+      ...bin,
+      fillPct: baseFill,
+      fillPercent: baseFill,
+      status,
+      label,
+      icon,
+      urgency,
+      fill,
+      priorityScore,
+    };
+  });
+
+  window.wardBins = resetBins;
+  resetBins.forEach((rb, i) => {
+    if (wardBins[i]) Object.assign(wardBins[i], rb);
+  });
+
+  if (typeof window.updateMapBins === 'function') {
+    window.updateMapBins(resetBins);
+  }
+  renderPriorityListUI(resetBins);
+
+  const criticalCount = resetBins.filter((b) => b.fillPct >= 80).length;
+  const warningCount = resetBins.filter((b) => b.fillPct >= 50 && b.fillPct < 80).length;
+  const normalCount = resetBins.filter((b) => b.fillPct < 50).length;
+
+  const muniHighBinsEl = document.getElementById('muniHighBins');
+  const muniWarnBinsEl = document.getElementById('muniWarnBins');
+  const muniLowBinsEl = document.getElementById('muniLowBins');
+
+  if (muniHighBinsEl) muniHighBinsEl.textContent = `${criticalCount} Bins Require Collection`;
+  if (muniWarnBinsEl) muniWarnBinsEl.textContent = `${warningCount} Bins`;
+  if (muniLowBinsEl) muniLowBinsEl.textContent = `${normalCount} Bins`;
+
+  if (window.appStore) window.appStore.actions.resetSimulation();
+  if (typeof window.showSimAlert === 'function') {
+    window.showSimAlert('🔄 Simulation reset to initial baseline fill levels.');
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.simulateTimeAdvance = simulateTimeAdvance;
+  window.simulateAdvanceTime = simulateTimeAdvance;
+  window.resetTimeSimulation = resetTimeSimulation;
+}
+
 export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   const [binsData, setBinsData] = useState(wardBins);
   const [isLoading, setIsLoading] = useState(true);
   const [showRoute, setShowRoute] = useState(false);
   const [routePositions, setRoutePositions] = useState([]);
   const [isRoutingLoading, setIsRoutingLoading] = useState(false);
-  const [isSimulated, setIsSimulated] = useState(false);
   const markerRefs = useRef({});
+
+  // Expose setter for external functions like simulateTimeAdvance
+  useEffect(() => {
+    if (allowRoute) {
+      window.updateMapBins = (newBins) => {
+        setBinsData([...newBins]);
+      };
+    }
+  }, [allowRoute]);
 
   // Map Data Fetching: load unified wardBins (with async DB fetch or fallback)
   useEffect(() => {
@@ -462,9 +652,9 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
 
   // Compute reactive bin list with status labels, icons, fill text, and capacity/waste details
   const binList = (binsData && binsData.length ? binsData : wardBins).map((b) => {
-    const fillPct = isSimulated
-      ? Math.min(100, (b.baseFill || b.fillPct || b.fillPercent || 60) + 15)
-      : (b.fillPct || b.fillPercent || b.baseFill || 60);
+    const fillPct = typeof b.fillPct === 'number'
+      ? b.fillPct
+      : (typeof b.fillPercent === 'number' ? b.fillPercent : (b.baseFill || 60));
     const isCritical = fillPct >= 80;
     const isWarning = fillPct >= 50 && fillPct < 80;
     const label = isCritical ? 'Critical' : isWarning ? 'Warning' : 'Normal';
@@ -474,6 +664,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
       ...b,
       fillPct,
       fillPercent: fillPct,
+      status: label,
       label,
       icon,
       fill,
@@ -483,12 +674,12 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
     };
   });
 
-  // Keep Priority Collection List in sync whenever binList or simulation changes
+  // Keep Priority Collection List in sync whenever binList changes
   useEffect(() => {
     if (allowRoute) {
       renderPriorityListUI(binList);
     }
-  }, [binList, allowRoute, isSimulated]);
+  }, [binList, allowRoute]);
 
   const redBins = binList.filter((b) => b.label === 'Critical');
 
@@ -558,9 +749,9 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
       setShowRoute(val);
       if (!val) setRoutePositions([]);
     };
-    window.toggleMapSimulation = () => setIsSimulated((prev) => !prev);
+    window.toggleMapSimulation = () => simulateTimeAdvance();
     window.resetMapSimulation = () => {
-      setIsSimulated(false);
+      resetTimeSimulation();
       setShowRoute(false);
       setRoutePositions([]);
     };
@@ -594,14 +785,12 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
       setRoutePositions([]);
     };
     const handleToggleSim = () => {
-      setIsSimulated((prev) => !prev);
-      if (window.appStore) window.appStore.actions.simulateAdvanceTime();
+      simulateTimeAdvance();
     };
     const handleReset = () => {
-      setIsSimulated(false);
+      resetTimeSimulation();
       setShowRoute(false);
       setRoutePositions([]);
-      if (window.appStore) window.appStore.actions.resetSimulation();
     };
 
     window.addEventListener('ecoroute:show', handleShowRoute);
@@ -610,9 +799,9 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
     window.addEventListener('ecoroute:reset', handleReset);
 
     // Direct DOM button bindings
-    const genButtons = document.querySelectorAll('button[onclick*="generateEcoRoute"]');
+    const genButtons = document.querySelectorAll('button[onclick*="generateEcoRoute"], button[onclick*="handleGenerateRouteWithLoading"]');
     const clearButtons = document.querySelectorAll('button[onclick*="resetSimulation"]');
-    const simButtons = document.querySelectorAll('button[onclick*="simulateAdvanceTime"]');
+    const simButtons = document.querySelectorAll('button[onclick*="simulateTimeAdvance"], button[onclick*="simulateAdvanceTime"]');
 
     genButtons.forEach((btn) => btn.addEventListener('click', handleShowRoute));
     clearButtons.forEach((btn) => btn.addEventListener('click', handleReset));

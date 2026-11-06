@@ -263,25 +263,21 @@ class GlobalAppStore {
       },
 
       // 3. Bin State Sync: Simulate +6h Waste updates Admin Registry
-      simulateAdvanceTime: () => {
+      simulateTimeAdvance: () => {
         this.setState((prev) => {
-          const nextSimulated = !prev.isSimulated;
+          const nextSimulated = true;
           const updatedBins = prev.bins.map((bin) => {
-            if (nextSimulated) {
-              const newFill = Math.min(100, bin.baseFill + 15);
-              const isCritical = newFill >= 80;
-              return {
-                ...bin,
-                fillPct: newFill,
-                status: isCritical ? 'Critical (≥80% Dispatch)' : 'Warning (50-79%)',
-              };
-            } else {
-              return {
-                ...bin,
-                fillPct: bin.baseFill,
-                status: 'Active',
-              };
-            }
+            const currentFill = typeof bin.fillPct === 'number' ? bin.fillPct : (bin.baseFill || 50);
+            const randomIncrease = Math.floor(Math.random() * (25 - 15 + 1)) + 15;
+            const newFill = Math.min(100, currentFill + randomIncrease);
+            const isCritical = newFill >= 80;
+            const isWarning = newFill >= 50 && newFill < 80;
+            return {
+              ...bin,
+              fillPct: newFill,
+              fillPercent: newFill,
+              status: isCritical ? 'Critical (≥80% Dispatch)' : isWarning ? 'Warning (50-79%)' : 'Normal (<50%)',
+            };
           });
 
           return {
@@ -290,6 +286,10 @@ class GlobalAppStore {
           };
         });
         this.syncDOM();
+      },
+
+      simulateAdvanceTime: () => {
+        this.actions.simulateTimeAdvance();
       },
 
       resetSimulation: () => {

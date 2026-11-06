@@ -551,19 +551,23 @@
     else if (state.activeView === 'dashboard') renderDashboard();
   }
 
-  function simulateAdvanceTime() {
+  function simulateTimeAdvance() {
+    if (window.simulateTimeAdvance && window.simulateTimeAdvance !== simulateTimeAdvance) {
+      return window.simulateTimeAdvance();
+    }
     state.simulatedAdvanced = !state.simulatedAdvanced;
     if (window.appStore) {
       window.appStore.actions.simulateAdvanceTime();
     }
     if (state.simulatedAdvanced) {
       state.bins.forEach(bin => {
-          bin.fillPercent = Math.min(100, Math.round(bin.fillPercent + 15));
+          const inc = Math.floor(Math.random() * (25 - 15 + 1)) + 15;
+          bin.fillPercent = Math.min(100, Math.round(bin.fillPercent + inc));
           bin.lastCollectedHoursAgo = (bin.lastCollectedHoursAgo || 0) + 6;
           updateBinCalculations(bin);
       });
       window.dispatchEvent(new CustomEvent('ecoroute:advance-time'));
-      showSimAlert(`⏳ Time advanced 6 hours (+15% waste fill simulated across all bins).`);
+      showSimAlert(`⏳ Time advanced 6 hours (+15-25% waste fill simulated across all bins).`);
     } else {
       state.bins = JSON.parse(JSON.stringify(initialBinsState));
       window.dispatchEvent(new CustomEvent('ecoroute:reset'));
@@ -571,11 +575,16 @@
     }
 
     if ($('muniHighBins')) {
-      $('muniHighBins').innerText = state.simulatedAdvanced ? '18 Bins Require Collection' : '15 Bins Require Collection';
+      const crit = state.bins.filter(b => b.fillPercent >= 80).length;
+      $('muniHighBins').innerText = `${crit} Bins Require Collection`;
     }
 
     if (state.routeActive) generateEcoRoute();
     else renderDashboard();
+  }
+
+  function simulateAdvanceTime() {
+    return simulateTimeAdvance();
   }
 
   function resetSimulation() {
@@ -985,6 +994,7 @@
   window.generateEcoRoute = generateEcoRoute;
   window.resetSimulation = resetSimulation;
   window.simulateAdvanceTime = simulateAdvanceTime;
+  window.simulateTimeAdvance = simulateTimeAdvance;
   window.switchView = function(view) {
       switchViewInternal(view);
   };
