@@ -115,8 +115,255 @@ export async function fetchOSRMRoute(waypoints = []) {
   };
 }
 
+// ── Unified Master Bins Array (wardBins) ───────────────────────────────────────
+// Single unified dataset for Pune Ward 12 & Municipal Dashboard.
+// Includes the 5 original map bins, plus accurate Pune coordinates for the
+// missing bins currently shown in the sidebar:
+//   - B06 - FC Road Night Zone [18.5262, 73.8441] (Critical / Red)
+//   - B07 - Prabhat Road Colony [18.5135, 73.8315] (Critical / Red)
+//   - B09 - Westend Mall [18.5623, 73.8078] (Critical / Red)
+//   - B12 - Pune University Road [18.5367, 73.8242] (Critical / Red)
+export const wardBins = [
+  // ── 5 Original Map Bins ───────────────────────────────────────────────────
+  {
+    id: '1',
+    code: 'B01',
+    name: 'Pune City Center',
+    pos: [18.5204, 73.8567],
+    lat: 18.5204,
+    lng: 73.8567,
+    baseFill: 88,
+    fillPct: 88,
+    fillPercent: 88,
+    status: 'Critical',
+    urgency: 'high',
+    capacity: '1000L',
+    wasteType: 'Organic',
+    areaType: 'Commercial',
+    lastPickup: 'Today, 06:30 AM',
+    collected: false,
+    priorityScore: 92,
+  },
+  {
+    id: '2',
+    code: 'B02',
+    name: 'Karvenagar / Cummins',
+    pos: [18.4893, 73.8202],
+    lat: 18.4893,
+    lng: 73.8202,
+    baseFill: 62,
+    fillPct: 62,
+    fillPercent: 62,
+    status: 'Warning',
+    urgency: 'medium',
+    capacity: '750L',
+    wasteType: 'Mixed',
+    areaType: 'Residential',
+    lastPickup: 'Yesterday, 05:00 PM',
+    collected: false,
+    priorityScore: 68,
+  },
+  {
+    id: '3',
+    code: 'B03',
+    name: 'Hinjewadi IT Park',
+    pos: [18.5913, 73.7389],
+    lat: 18.5913,
+    lng: 73.7389,
+    baseFill: 35,
+    fillPct: 35,
+    fillPercent: 35,
+    status: 'Normal',
+    urgency: 'low',
+    capacity: '1500L',
+    wasteType: 'Recyclable',
+    areaType: 'Commercial',
+    lastPickup: 'Today, 07:15 AM',
+    collected: false,
+    priorityScore: 38,
+  },
+  {
+    id: '4',
+    code: 'B04',
+    name: 'Hadapsar Terminal',
+    pos: [18.4966, 73.9416],
+    lat: 18.4966,
+    lng: 73.9416,
+    baseFill: 92,
+    fillPct: 92,
+    fillPercent: 92,
+    status: 'Critical',
+    urgency: 'high',
+    capacity: '1500L',
+    wasteType: 'Mixed',
+    areaType: 'Industrial',
+    lastPickup: 'Yesterday, 04:30 PM',
+    collected: false,
+    priorityScore: 95,
+  },
+  {
+    id: '5',
+    code: 'B05',
+    name: 'Kothrud Stand',
+    pos: [18.5074, 73.8151],
+    lat: 18.5074,
+    lng: 73.8151,
+    baseFill: 68,
+    fillPct: 68,
+    fillPercent: 68,
+    status: 'Warning',
+    urgency: 'medium',
+    capacity: '800L',
+    wasteType: 'Organic',
+    areaType: 'Transit',
+    lastPickup: '2 days ago',
+    collected: false,
+    priorityScore: 72,
+  },
+  // ── Missing Bins with Accurate Pune Coordinates ───────────────────────────
+  {
+    id: 'B06',
+    code: 'B06',
+    name: 'FC Road Night Zone',
+    pos: [18.5262, 73.8441],
+    lat: 18.5262,
+    lng: 73.8441,
+    baseFill: 97,
+    fillPct: 97,
+    fillPercent: 97,
+    status: 'Critical',
+    urgency: 'high',
+    capacity: '1000L',
+    wasteType: 'Organic',
+    areaType: 'Commercial',
+    lastPickup: 'Yesterday, 10:00 PM',
+    collected: false,
+    priorityScore: 98,
+  },
+  {
+    id: 'B07',
+    code: 'B07',
+    name: 'Prabhat Road Colony',
+    pos: [18.5135, 73.8315],
+    lat: 18.5135,
+    lng: 73.8315,
+    baseFill: 86,
+    fillPct: 86,
+    fillPercent: 86,
+    status: 'Critical',
+    urgency: 'high',
+    capacity: '1200L',
+    wasteType: 'Organic',
+    areaType: 'Residential',
+    lastPickup: 'Yesterday, 08:30 PM',
+    collected: false,
+    priorityScore: 89,
+  },
+  {
+    id: 'B09',
+    code: 'B09',
+    name: 'Westend Mall',
+    pos: [18.5623, 73.8078],
+    lat: 18.5623,
+    lng: 73.8078,
+    baseFill: 91,
+    fillPct: 91,
+    fillPercent: 91,
+    status: 'Critical',
+    urgency: 'high',
+    capacity: '1500L',
+    wasteType: 'Dry',
+    areaType: 'Commercial',
+    lastPickup: 'Yesterday, 06:15 PM',
+    collected: false,
+    priorityScore: 93,
+  },
+  {
+    id: 'B12',
+    code: 'B12',
+    name: 'Pune University Road',
+    pos: [18.5367, 73.8242],
+    lat: 18.5367,
+    lng: 73.8242,
+    baseFill: 84,
+    fillPct: 84,
+    fillPercent: 84,
+    status: 'Critical',
+    urgency: 'high',
+    capacity: '1000L',
+    wasteType: 'Mixed',
+    areaType: 'Commercial',
+    lastPickup: 'Yesterday, 09:00 PM',
+    collected: false,
+    priorityScore: 88,
+  },
+];
+
+if (typeof window !== 'undefined') {
+  window.wardBins = wardBins;
+}
+
+// ── Priority Collection List Dynamic Renderer ────────────────────────────────
+// Dynamically renders UI cards directly from wardBins (filtered by status and sorted by fill%)
+export function renderPriorityListUI(binsToRender) {
+  const listEl = document.getElementById('muniPriorityList');
+  if (!listEl) return;
+
+  const list = binsToRender && binsToRender.length ? binsToRender : (window.wardBins || wardBins);
+
+  // Filter by status (Critical / fillPct >= 80) and sort by fill percentage descending
+  const priorityBins = list
+    .filter((b) => (b.label === 'Critical' || b.fillPct >= 80 || (b.status && b.status.toLowerCase().includes('critical')) || b.urgency === 'high') && !b.collected)
+    .sort((a, b) => (b.fillPct || b.fillPercent || 0) - (a.fillPct || a.fillPercent || 0));
+
+  if (priorityBins.length === 0) {
+    listEl.innerHTML = `<div class="text-xs text-slate-400 p-4 text-center">No bins currently above priority collection threshold (≥80%).</div>`;
+    return;
+  }
+
+  listEl.innerHTML = priorityBins
+    .map((bin, idx) => {
+      const lat = bin.pos ? bin.pos[0] : (bin.lat || 18.5204);
+      const lng = bin.pos ? bin.pos[1] : (bin.lng || 73.8567);
+      const binId = bin.id || bin.code;
+      const displayName = `${bin.code || bin.id} - ${bin.name}`;
+      const subtitle = `${bin.areaType || 'Commercial'} • ${bin.wasteType || 'Organic'}`;
+      const fill = bin.fillPct || bin.fillPercent || 80;
+      const score = bin.priorityScore || Math.min(100, fill + 5);
+
+      return `
+        <div onclick="window.flyToBin(${lat}, ${lng}, 16, '${binId}')"
+             title="Click to zoom map to ${bin.name} (${lat}, ${lng})"
+             class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-md transition-all active:scale-[0.98] group">
+            <div class="flex items-center gap-3">
+                <span class="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-500 font-bold flex items-center justify-center font-mono text-[10px] group-hover:scale-110 transition-transform">
+                  #${idx + 1}
+                </span>
+                <div>
+                    <div class="font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                        <span>${displayName}</span>
+                        <i class="fa-solid fa-location-crosshairs text-[10px] text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </div>
+                    <div class="text-[10px] text-slate-400">${subtitle}</div>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="font-mono font-extrabold text-rose-500 text-sm">${fill}%</span>
+                <div class="text-[9px] text-slate-400">Score: ${score}</div>
+            </div>
+        </div>
+      `;
+    })
+    .join('');
+}
+
+if (typeof window !== 'undefined') {
+  window.renderPriorityListUI = renderPriorityListUI;
+  window.renderPriorityList = renderPriorityListUI;
+}
+
 export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
-  const [binsData, setBinsData] = useState([]);
+  const [binsData, setBinsData] = useState(wardBins);
   const [isLoading, setIsLoading] = useState(true);
   const [showRoute, setShowRoute] = useState(false);
   const [routePositions, setRoutePositions] = useState([]);
@@ -124,7 +371,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   const [isSimulated, setIsSimulated] = useState(false);
   const markerRefs = useRef({});
 
-  // Map Data Fetching: wrap asynchronous DB fetching in a useEffect hook on page load
+  // Map Data Fetching: load unified wardBins (with async DB fetch or fallback)
   useEffect(() => {
     let isMounted = true;
     async function loadBinsAsync() {
@@ -135,29 +382,18 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
           fetchedData = await fetchBinsFromDB();
         } else if (typeof window !== 'undefined' && window.fetchBinsFromDB) {
           fetchedData = await window.fetchBinsFromDB();
-        } else {
-          // Asynchronous database simulation fallback
-          fetchedData = await new Promise((resolve) => {
-            setTimeout(() => {
-              resolve([
-                { id: 'B01', name: 'Shivajinagar Market',    pos: [18.5220, 73.8549], fillPct: 94, capacity: '1000L', capacityL: 1000, wasteType: 'Organic', lastPickup: 'Today, 06:00 AM' },
-                { id: 'B04', name: 'Mandai Market',          pos: [18.5193, 73.8530], fillPct: 91, capacity: '1200L', capacityL: 1200, wasteType: 'Mixed',   lastPickup: 'Yesterday, 04:30 PM' },
-                { id: 'B06', name: 'FC Road Night Zone',     pos: [18.5184, 73.8566], fillPct: 97, capacity: '1000L', capacityL: 1000, wasteType: 'Organic', lastPickup: 'Yesterday, 10:00 PM' },
-                { id: 1,     name: 'Pune City Center',       pos: [18.5204, 73.8567], fillPct: 88, capacity: '1000L', capacityL: 1000, wasteType: 'Organic', lastPickup: 'Today, 06:30 AM' },
-                { id: 2,     name: 'Karvenagar / Cummins',    pos: [18.4893, 73.8202], fillPct: 62, capacity: '750L',  capacityL: 750,  wasteType: 'Mixed',   lastPickup: 'Yesterday, 05:00 PM' },
-                { id: 3,     name: 'Hinjewadi IT Park',       pos: [18.5913, 73.7389], fillPct: 35, capacity: '1500L', capacityL: 1500, wasteType: 'Recyclable', lastPickup: 'Today, 07:15 AM' },
-                { id: 4,     name: 'Hadapsar Terminal',       pos: [18.4966, 73.9416], fillPct: 92, capacity: '1500L', capacityL: 1500, wasteType: 'Mixed',   lastPickup: 'Yesterday, 04:30 PM' },
-                { id: 5,     name: 'Kothrud Stand',           pos: [18.5074, 73.8151], fillPct: 68, capacity: '800L',  capacityL: 800,  wasteType: 'Organic', lastPickup: '2 days ago' },
-              ]);
-            }, 1200);
-          });
         }
 
         if (isMounted) {
-          setBinsData(fetchedData || []);
+          if (fetchedData && fetchedData.length >= wardBins.length) {
+            setBinsData(fetchedData);
+          } else {
+            setBinsData(wardBins);
+          }
         }
       } catch (err) {
-        console.error('Error fetching bin coordinates and fill levels from DB:', err);
+        console.error('Error fetching bin coordinates from DB, using unified wardBins:', err);
+        if (isMounted) setBinsData(wardBins);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -170,10 +406,10 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   }, []);
 
   // Compute reactive bin list with status labels, icons, fill text, and capacity/waste details
-  const binList = binsData.map((b) => {
+  const binList = (binsData && binsData.length ? binsData : wardBins).map((b) => {
     const fillPct = isSimulated
-      ? Math.min(100, b.fillPct + (b.fillPct >= 90 ? 5 : 15))
-      : b.fillPct;
+      ? Math.min(100, (b.baseFill || b.fillPct || b.fillPercent || 60) + 15)
+      : (b.fillPct || b.fillPercent || b.baseFill || 60);
     const isCritical = fillPct >= 80;
     const isWarning = fillPct >= 50 && fillPct < 80;
     const label = isCritical ? 'Critical' : isWarning ? 'Warning' : 'Normal';
@@ -182,6 +418,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
     return {
       ...b,
       fillPct,
+      fillPercent: fillPct,
       label,
       icon,
       fill,
@@ -191,12 +428,19 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
     };
   });
 
+  // Keep Priority Collection List in sync whenever binList or simulation changes
+  useEffect(() => {
+    if (allowRoute) {
+      renderPriorityListUI(binList);
+    }
+  }, [binList, allowRoute, isSimulated]);
+
   const redBins = binList.filter((b) => b.label === 'Critical');
 
   // Async function to fetch and display OSRM real street route
   const generateOSRMRoute = async () => {
     setIsRoutingLoading(true);
-    // Prefer connecting red bins (e.g. Pune City Center to Hadapsar)
+    // Connect all Critical Red bins
     const waypoints = redBins.length >= 2
       ? redBins.map((b) => b.pos)
       : [[18.5204, 73.8567], [18.4966, 73.9416]];
@@ -250,15 +494,25 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
       setRoutePositions([]);
     };
 
-    // Sidebar-to-Map flyTo helper
+    // Sidebar-to-Map flyTo helper with automatic popup opening
     window.flyToBin = (lat, lng, zoom = 16, binId) => {
       const map = window.muniMap || _muniMapInstance;
       if (map && typeof map.flyTo === 'function') {
         map.flyTo([lat, lng], zoom, { animate: true, duration: 1.5 });
-        if (binId && markerRefs.current && markerRefs.current[binId]) {
+        if (binId && markerRefs.current) {
           setTimeout(() => {
-            try { markerRefs.current[binId].openPopup(); } catch(e){}
-          }, 1400);
+            try {
+              const marker = markerRefs.current[binId] ||
+                             markerRefs.current[String(binId)] ||
+                             markerRefs.current[String(binId).toLowerCase()] ||
+                             markerRefs.current[String(binId).toUpperCase()];
+              if (marker && typeof marker.openPopup === 'function') {
+                marker.openPopup();
+              }
+            } catch(e) {
+              console.warn("Could not open marker popup:", e);
+            }
+          }, 1200);
         }
       }
     };
@@ -369,7 +623,14 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
             position={bin.pos}
             icon={bin.icon}
             ref={(ref) => {
-              if (ref) markerRefs.current[bin.id] = ref;
+              if (ref) {
+                markerRefs.current[bin.id] = ref;
+                markerRefs.current[String(bin.id)] = ref;
+                if (bin.code) {
+                  markerRefs.current[bin.code] = ref;
+                  markerRefs.current[String(bin.code)] = ref;
+                }
+              }
             }}
           >
             <Popup className="eco-bin-popup">
@@ -452,6 +713,7 @@ export function mountMap() {
       setTimeout(() => _muniMapInstance.invalidateSize(), 50);
     }
   }
+  renderPriorityListUI(wardBins);
 }
 
 export function mountCitizenMap() {
@@ -479,6 +741,7 @@ export function mountAllMaps() {
   mountAdminTruckList();
   mountAdminAuditLog();
   mountAllContextPanels();
+  renderPriorityListUI(wardBins);
 }
 
 if (document.readyState === 'loading') {

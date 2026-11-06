@@ -352,16 +352,19 @@
   }
 
   function renderUrgentPanel() {
+    if (typeof window.renderPriorityListUI === 'function') {
+      window.renderPriorityListUI();
+      return;
+    }
     const list = $('muniPriorityList');
     if (!list) return;
 
-    // High-urgency first, then medium - both sorted by overflow ETA
-    const priorityBins = state.bins
-      .filter(b => !b.collected && (b.urgency === 'high' || b.urgency === 'medium'))
-      .sort((a, b) => {
-        if (a.urgency !== b.urgency) return a.urgency === 'high' ? -1 : 1;
-        return a.overflowHours - b.overflowHours;
-      });
+    const sourceBins = window.wardBins || state.bins;
+
+    // Filter by status (Critical / fillPct >= 80) and sort by fill percentage descending
+    const priorityBins = sourceBins
+      .filter(b => !b.collected && (b.label === 'Critical' || (b.fillPct || b.fillPercent) >= 80 || (b.status && b.status.toLowerCase().includes('critical')) || b.urgency === 'high'))
+      .sort((a, b) => (b.fillPct || b.fillPercent || 0) - (a.fillPct || a.fillPercent || 0));
 
     if (priorityBins.length === 0) {
       list.innerHTML = `<div class="text-xs text-slate-400 p-4 text-center">No bins currently above threshold (${state.cfg.collectionThresholdPct}%).</div>`;
@@ -369,29 +372,31 @@
     }
 
     list.innerHTML = priorityBins.map((bin, idx) => {
-      let badgeClass = bin.urgency === 'high' ? 'bg-rose-500/20 text-rose-500' : 'bg-amber-500/20 text-amber-500';
-      let scoreColor = bin.priorityScore >= 80 ? 'text-rose-500' : bin.priorityScore >= 50 ? 'text-amber-500' : 'text-emerald-500';
+      let badgeClass = 'bg-rose-500/20 text-rose-500';
+      let scoreColor = 'text-rose-500';
       
-      const lat = bin.latitude || bin.lat || (bin.pos ? bin.pos[0] : 18.5204);
-      const lng = bin.longitude || bin.lon || bin.lng || (bin.pos ? bin.pos[1] : 73.8567);
+      const lat = bin.pos ? bin.pos[0] : (bin.latitude || bin.lat || 18.5204);
+      const lng = bin.pos ? bin.pos[1] : (bin.longitude || bin.lon || bin.lng || 73.8567);
+      const binId = bin.id || bin.code;
+      const fill = bin.fillPct || bin.fillPercent || 80;
 
       return `
-        <div onclick="flyToBin(${lat}, ${lng}, 16, '${bin.id}')"
+        <div onclick="window.flyToBin ? window.flyToBin(${lat}, ${lng}, 16, '${binId}') : flyToBin(${lat}, ${lng}, 16, '${binId}')"
              title="Click to zoom map to ${bin.name} (${lat}, ${lng})"
              class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-md transition-all active:scale-[0.98] group">
             <div class="flex items-center gap-3">
                 <span class="w-6 h-6 rounded-lg ${badgeClass} font-bold flex items-center justify-center font-mono text-[10px] group-hover:scale-110 transition-transform">#${idx+1}</span>
                 <div>
                     <div class="font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
-                        <span>${bin.id} - ${bin.name}</span>
+                        <span>${bin.code || bin.id} - ${bin.name}</span>
                         <i class="fa-solid fa-location-crosshairs text-[10px] text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                     </div>
-                    <div class="text-[10px] text-slate-400">${bin.areaType} • ${bin.wasteType}</div>
+                    <div class="text-[10px] text-slate-400">${bin.areaType || 'Commercial'} • ${bin.wasteType || 'Organic'}</div>
                 </div>
             </div>
             <div class="text-right">
-                <span class="font-mono font-extrabold ${scoreColor} text-sm">${bin.fillPercent}%</span>
-                <div class="text-[9px] text-slate-400">Score: ${bin.priorityScore}</div>
+                <span class="font-mono font-extrabold ${scoreColor} text-sm">${fill}%</span>
+                <div class="text-[9px] text-slate-400">Score: ${bin.priorityScore || fill}</div>
             </div>
         </div>
       `;
