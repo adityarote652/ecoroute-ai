@@ -1193,7 +1193,8 @@
           // Trigger temporary green success banner at the top
           showCitizenBanner("Report Verified & Submitted! +50 Green Points Added to Profile");
       } catch (err) {
-          console.error("uploadReportToDB failed:", err);
+          console.error(err);
+          alert("Failed to save: " + err.message);
           showCitizenBanner(`Submission failed: ${err.message || 'Error uploading to database'}`);
       } finally {
           if (submitBtn) {

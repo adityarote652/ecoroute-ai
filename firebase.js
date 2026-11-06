@@ -167,7 +167,8 @@ export async function uploadReportToDB(reportData = {}) {
       ...payload
     };
   } catch (err) {
-    console.error("Firestore database write failed in uploadReportToDB:", err);
+    console.error(err);
+    alert("Failed to save: " + err.message);
     throw err;
   }
 }
