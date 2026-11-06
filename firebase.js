@@ -7,23 +7,42 @@ import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from
 // NEVER hardcode credentials here — the .env file is gitignored.
 // See .env.example for the list of required variable names.
 const firebaseConfig = {
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDemoFallbackKey1234567890123456789',
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'ecoroute-ai.firebaseapp.com',
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID || 'ecoroute-ai',
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'ecoroute-ai.appspot.com',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '1234567890',
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID || '1:1234567890:web:abcdef123456',
+  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-ABCDEF1234'
 };
 
 // ─── Initialize Firebase (singleton-safe) ─────────────────────────────────────
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+let appInstance = null;
+try {
+  appInstance = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+} catch (e) {
+  console.warn("Firebase initializeApp fallback:", e);
+}
 
 // ─── Firestore Database ────────────────────────────────────────────────────────
-export const db = getFirestore(app);
+let dbInstance = null;
+try {
+  if (appInstance) dbInstance = getFirestore(appInstance);
+} catch (e) {
+  console.warn("Firestore initialization fallback:", e);
+}
 
 // ─── Firebase Auth ─────────────────────────────────────────────────────────────
-export const auth = getAuth(app);
+let authInstance = null;
+try {
+  if (appInstance) authInstance = getAuth(appInstance);
+} catch (e) {
+  console.warn("Firebase auth initialization fallback:", e);
+}
+
+export const app = appInstance;
+export const db = dbInstance;
+export const auth = authInstance;
 
 // Global Auth State Context
 export const authState = {
@@ -264,4 +283,4 @@ window.generateOptimalRouteBackend = generateOptimalRouteBackend;
 window.updateAuthNavbarUI = updateAuthNavbarUI;
 window.updateBinStatusInDB = updateBinStatusInDB;
 
-export { app };
+

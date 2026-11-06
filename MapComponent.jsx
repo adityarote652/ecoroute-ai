@@ -137,6 +137,23 @@ function MapResizer({ onReady, isLoading, isMuni = true }) {
     }
   }, [map, isLoading]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      setTimeout(() => {
+        try { map.invalidateSize(); } catch (e) {}
+      }, 50);
+      setTimeout(() => {
+        try { map.invalidateSize(); } catch (e) {}
+      }, 250);
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('view:switched', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('view:switched', handleResize);
+    };
+  }, [map]);
+
   return null;
 }
 

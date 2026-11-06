@@ -883,6 +883,7 @@
       const tgt = document.getElementById('view-' + view);
       if (tgt) tgt.classList.remove('hidden');
       window.scrollTo(0, 0);
+      window.dispatchEvent(new CustomEvent('view:switched', { detail: { view } }));
 
       // Update active nav styling across desktop and mobile menus
       document.querySelectorAll('#desktopNav button, #mobileMenu button').forEach(btn => {
@@ -926,6 +927,10 @@
       if (view === 'municipal') {
           renderDashboard();
           if (window.mountReactMap) window.mountReactMap();
+          if (window.muniMap) {
+            setTimeout(() => window.muniMap.invalidateSize(), 50);
+            setTimeout(() => window.muniMap.invalidateSize(), 200);
+          }
       } else if (view === 'citizen') {
           if (window.mountCitizenMap) window.mountCitizenMap();
           if (window.mountCitizenWallet) window.mountCitizenWallet();
