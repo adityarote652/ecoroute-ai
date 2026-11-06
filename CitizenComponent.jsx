@@ -24,7 +24,7 @@ export async function submitCitizenReport(event) {
   const submitBtn = document.getElementById('btnSubmitCitizenReport');
   const originalHtml = submitBtn
     ? submitBtn.innerHTML
-    : '<i class="fa-solid fa-paper-plane"></i><span>Submit Citizen Report</span>';
+    : '<i class="fa-solid fa-paper-plane"></i><span>Report Issue (+50 Credits)</span>';
 
   // 1. Show loading spinner on button while saving
   if (submitBtn) {
@@ -81,6 +81,17 @@ export async function submitCitizenReport(event) {
     }
     if (notesTextarea) {
       notesTextarea.value = '';
+    }
+
+    // Increment Eco-Wallet credits (+50)
+    const ecoDisplay = document.getElementById('ecoCreditsDisplay');
+    if (ecoDisplay) {
+      const match = ecoDisplay.textContent.match(/\d+/);
+      const current = match ? parseInt(match[0], 10) : 450;
+      ecoDisplay.textContent = `${current + 50} Green Credits`;
+    }
+    if (typeof window.setCitizenEcoCredits === 'function') {
+      window.setCitizenEcoCredits((prev) => prev + 50);
     }
 
     // Clear photo upload preview if present
@@ -203,6 +214,7 @@ export function initCitizenHub() {
  * Manages form state, loading indicator, and Firebase addDoc submission with try/catch error handling.
  */
 export function CitizenReportForm({ onReportSubmitted }) {
+  const [ecoCredits, setEcoCredits] = useState(450);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [nearestBin, setNearestBin] = useState('Pune City Center');
@@ -243,6 +255,7 @@ export function CitizenReportForm({ onReportSubmitted }) {
       setNearestBin('Pune City Center');
       setIssueCategory('Overflowing Waste');
       setAdditionalDetails('');
+      setEcoCredits((prev) => prev + 50);
       setSuccessMessage('Report Verified & Submitted! +50 Green Points Added');
 
       if (typeof window.showCitizenBanner === 'function') {
@@ -263,83 +276,102 @@ export function CitizenReportForm({ onReportSubmitted }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {successMessage && (
-        <div className="p-3 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-2">
-          <i className="fa-solid fa-circle-check text-emerald-600"></i>
-          <span>{successMessage}</span>
+    <div className="space-y-4">
+      {/* Gamified Eco-Wallet Card */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 dark:from-emerald-950/40 dark:via-teal-950/40 dark:to-green-950/40 border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl flex-shrink-0">
+            <i className="fa-solid fa-wallet"></i>
+          </div>
+          <div>
+            <div className="text-sm font-bold text-slate-900 dark:text-white">
+              Your Eco-Wallet: {ecoCredits} Green Credits
+            </div>
+            <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-medium flex items-center gap-1.5">
+              <span>🪙 50 Credits = ₹10 PCMC Metro Discount</span>
+            </div>
+          </div>
         </div>
-      )}
-      <div>
-        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-          Select Nearest Bin
-        </label>
-        <select
-          value={nearestBin}
-          onChange={(e) => setNearestBin(e.target.value)}
-          required
-          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
-        >
-          <option value="Pune City Center">B01 - Pune City Center</option>
-          <option value="Karvenagar / Cummins">B02 - Karvenagar / Cummins</option>
-          <option value="Hinjewadi IT Park">B03 - Hinjewadi IT Park</option>
-          <option value="Hadapsar Terminal">B04 - Hadapsar Terminal</option>
-          <option value="Kothrud Stand">B05 - Kothrud Stand</option>
-          <option value="FC Road Night Zone">B06 - FC Road Night Zone</option>
-          <option value="Prabhat Road Colony">B07 - Prabhat Road Colony</option>
-          <option value="Westend Mall">B09 - Westend Mall</option>
-          <option value="Pune University Road">B12 - Pune University Road</option>
-        </select>
       </div>
 
-      <div>
-        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-          Issue Category
-        </label>
-        <select
-          value={issueCategory}
-          onChange={(e) => setIssueCategory(e.target.value)}
-          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
-        >
-          <option value="Overflowing Waste">Overflowing Waste</option>
-          <option value="Damaged Bin Structure">Damaged Bin Structure</option>
-          <option value="Hazardous / Medical Waste">Hazardous / Medical Waste</option>
-          <option value="Foul Odor / Pungent Spill">Foul Odor / Pungent Spill</option>
-          <option value="Irregular Pickup Schedule">Irregular Pickup Schedule</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-          Additional Details
-        </label>
-        <textarea
-          value={additionalDetails}
-          onChange={(e) => setAdditionalDetails(e.target.value)}
-          rows="2"
-          placeholder="e.g. Bin overflowing near Market Gate 2..."
-          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
-        />
-      </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2"
-      >
-        {loading ? (
-          <>
-            <i className="fa-solid fa-spinner fa-spin mr-1.5"></i>
-            <span>Saving to Firestore...</span>
-          </>
-        ) : (
-          <>
-            <i className="fa-solid fa-paper-plane"></i>
-            <span>Submit Citizen Report</span>
-          </>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {successMessage && (
+          <div className="p-3 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <i className="fa-solid fa-circle-check text-emerald-600"></i>
+            <span>{successMessage}</span>
+          </div>
         )}
-      </button>
-    </form>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+            Select Nearest Bin
+          </label>
+          <select
+            value={nearestBin}
+            onChange={(e) => setNearestBin(e.target.value)}
+            required
+            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            <option value="Pune City Center">B01 - Pune City Center</option>
+            <option value="Karvenagar / Cummins">B02 - Karvenagar / Cummins</option>
+            <option value="Hinjewadi IT Park">B03 - Hinjewadi IT Park</option>
+            <option value="Hadapsar Terminal">B04 - Hadapsar Terminal</option>
+            <option value="Kothrud Stand">B05 - Kothrud Stand</option>
+            <option value="FC Road Night Zone">B06 - FC Road Night Zone</option>
+            <option value="Prabhat Road Colony">B07 - Prabhat Road Colony</option>
+            <option value="Westend Mall">B09 - Westend Mall</option>
+            <option value="Pune University Road">B12 - Pune University Road</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+            Issue Category
+          </label>
+          <select
+            value={issueCategory}
+            onChange={(e) => setIssueCategory(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            <option value="Overflowing Waste">Overflowing Waste</option>
+            <option value="Damaged Bin Structure">Damaged Bin Structure</option>
+            <option value="Hazardous / Medical Waste">Hazardous / Medical Waste</option>
+            <option value="Foul Odor / Pungent Spill">Foul Odor / Pungent Spill</option>
+            <option value="Irregular Pickup Schedule">Irregular Pickup Schedule</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+            Additional Details
+          </label>
+          <textarea
+            value={additionalDetails}
+            onChange={(e) => setAdditionalDetails(e.target.value)}
+            rows="2"
+            placeholder="e.g. Bin overflowing near Market Gate 2..."
+            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <i className="fa-solid fa-spinner fa-spin mr-1.5"></i>
+              <span>Saving to Firestore...</span>
+            </>
+          ) : (
+            <>
+              <i className="fa-solid fa-paper-plane"></i>
+              <span>Report Issue (+50 Credits)</span>
+            </>
+          )}
+        </button>
+      </form>
+    </div>
   );
 }
 

@@ -1226,6 +1226,23 @@
                         <span class="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded-md">+50 PTS on Verification</span>
                     </div>
 
+                    <!-- Gamified Eco-Wallet Card -->
+                    <div id="ecoWalletCard" class="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 dark:from-emerald-950/40 dark:via-teal-950/40 dark:to-green-950/40 border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl flex-shrink-0">
+                                <i class="fa-solid fa-wallet"></i>
+                            </div>
+                            <div>
+                                <div class="text-sm font-bold text-slate-900 dark:text-white">
+                                    Your Eco-Wallet: <span id="ecoCreditsDisplay" class="font-extrabold text-emerald-600 dark:text-emerald-400">450 Green Credits</span>
+                                </div>
+                                <div class="text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
+                                    🪙 50 Credits = ₹10 PCMC Metro Discount
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <form onsubmit="uploadReportToDB(event)" class="space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Select Nearest Bin</label>
@@ -1261,7 +1278,7 @@
 
                         <button type="submit" id="btnSubmitCitizenReport" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2">
                             <i class="fa-solid fa-paper-plane"></i>
-                            <span>Submit Citizen Report</span>
+                            <span>Report Issue (+50 Credits)</span>
                         </button>
                     </form>
                 </div>
