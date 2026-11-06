@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { fetchBinsFromDB } from './firebase.js';
+import { appStore } from './AppContext.jsx';
 
 // ── Inject attribution SVG sizing rule to avoid Tailwind stretching ────────
 if (typeof document !== 'undefined') {
@@ -49,6 +50,12 @@ function makeDivIcon(color) {
 const redIcon    = makeDivIcon('#ef4444');   // Critical  >= 80%
 const orangeIcon = makeDivIcon('#f97316');   // Warning   50-79%
 const greenIcon  = makeDivIcon('#22c55e');   // Normal    < 50%
+
+if (typeof window !== 'undefined') {
+  window.redIcon = redIcon;
+  window.orangeIcon = orangeIcon;
+  window.greenIcon = greenIcon;
+}
 
 // ── Permanent Facilities (Start / End) ──────────────────────────────────────
 export const TRUCK_DEPOT = {
@@ -616,6 +623,20 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
     }
   }, [allowRoute]);
 
+  // Subscribe to Global Context so driver collections update Municipal Map in real time
+  useEffect(() => {
+    const store = appStore || (typeof window !== 'undefined' ? window.appStore : null);
+    if (store && typeof store.subscribe === 'function') {
+      const unsubscribe = store.subscribe(() => {
+        const globalState = store.getState();
+        if (globalState.bins && globalState.bins.length) {
+          setBinsData([...globalState.bins]);
+        }
+      });
+      return unsubscribe;
+    }
+  }, []);
+
   // Map Data Fetching: load unified wardBins (with async DB fetch or fallback)
   useEffect(() => {
     let isMounted = true;
@@ -652,14 +673,15 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
 
   // Compute reactive bin list with status labels, icons, fill text, and capacity/waste details
   const binList = (binsData && binsData.length ? binsData : wardBins).map((b) => {
-    const fillPct = typeof b.fillPct === 'number'
+    const isCollected = b.collected === true || (b.status && b.status.toLowerCase().includes('normal') && (b.fillPct === 0 || b.fillPct < 50));
+    const fillPct = isCollected ? 0 : (typeof b.fillPct === 'number'
       ? b.fillPct
-      : (typeof b.fillPercent === 'number' ? b.fillPercent : (b.baseFill || 60));
-    const isCritical = fillPct >= 80;
-    const isWarning = fillPct >= 50 && fillPct < 80;
-    const label = isCritical ? 'Critical' : isWarning ? 'Warning' : 'Normal';
-    const icon = isCritical ? redIcon : isWarning ? orangeIcon : greenIcon;
-    const fill = `${fillPct}% (${isCritical ? '≥80%' : isWarning ? '50-79%' : '<50%'})`;
+      : (typeof b.fillPercent === 'number' ? b.fillPercent : (b.baseFill || 60)));
+    const isCritical = !isCollected && fillPct >= 80;
+    const isWarning = !isCollected && fillPct >= 50 && fillPct < 80;
+    const label = isCollected ? 'Normal' : (isCritical ? 'Critical' : isWarning ? 'Warning' : 'Normal');
+    const icon = isCollected ? greenIcon : (isCritical ? redIcon : isWarning ? orangeIcon : greenIcon);
+    const fill = `${fillPct}% (${label})`;
     return {
       ...b,
       fillPct,
@@ -688,10 +710,8 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   const generateRealRoute = async () => {
     setIsRoutingLoading(true);
 
-    // Identify Critical bins to collect
-    const criticalBins = redBins.length > 0
-      ? redBins
-      : binList.filter((b) => b.fillPct >= 75 || b.urgency === 'high');
+    // Identify Critical uncollected bins to route
+    const criticalBins = binList.filter((b) => !b.collected && (b.fillPct >= 80 || b.label === 'Critical' || (b.status && b.status.toLowerCase().includes('critical'))));
 
     const middleCoords = criticalBins.length > 0
       ? criticalBins.map((b) => b.pos)
@@ -709,6 +729,18 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
       if (result && result.coords) {
         setRoutePositions(result.coords);
         setShowRoute(true);
+
+        // Sync the exact routePath and criticalBins directly to Global Context for DriverDashboard
+        if (typeof window !== 'undefined' && window.appStore) {
+          window.appStore.actions.setDispatchedRoute({
+            routePath: result.coords,
+            criticalBins: criticalBins.map(b => ({ ...b })),
+            routeStats: {
+              distanceKm: result.distanceKm,
+              durationMin: result.durationMin
+            }
+          });
+        }
 
         // Update stats on Municipal Dashboard
         const fixedDistEl = document.getElementById('optFixedDist');
@@ -949,7 +981,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
         {/* Detailed Map Popups with Bin Name, Status, Capacity, Waste Type, and Last Pickup Date */}
         {binList.map((bin) => (
           <Marker
-            key={`${bin.id}-${bin.fillPct}`}
+            key={`${bin.id}-${bin.fillPct}-${bin.status}-${bin.collected ? 'col' : 'pend'}`}
             position={bin.pos}
             icon={bin.icon}
             ref={(ref) => {

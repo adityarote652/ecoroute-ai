@@ -53,34 +53,6 @@ function playCompletionFanfare() {
   }
 }
 
-// ── OSRM Street Route Driving Geometry Fetcher ──────────────────────────────
-async function fetchDriverOSRMRoute(waypoints = []) {
-  if (!waypoints || waypoints.length < 2) return null;
-  const coordsStr = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
-  const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`OSRM API responded with status ${response.status}`);
-    const data = await response.json();
-    if (data.code === 'Ok' && data.routes && data.routes[0]?.geometry?.coordinates) {
-      const leafletCoords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-      const distanceKm = (data.routes[0].distance / 1000).toFixed(1);
-      const durationMin = Math.round(data.routes[0].duration / 60);
-      return { coords: leafletCoords, distanceKm, durationMin };
-    }
-  } catch (err) {
-    console.warn("Driver OSRM route fetch fallback:", err);
-  }
-
-  // Graceful fallback: straight line connections between waypoints
-  return {
-    coords: waypoints,
-    distanceKm: (waypoints.length * 2.8).toFixed(1),
-    durationMin: waypoints.length * 6,
-  };
-}
-
 // ── Custom Tablet-Optimized High-Contrast Leaflet Markers ───────────────────
 function createTruckMarkerIcon() {
   return L.divIcon({
@@ -137,8 +109,22 @@ function createDepotMarkerIcon() {
   return L.divIcon({
     className: '',
     html: `
-      <div style="width:38px;height:38px;border-radius:12px;background:#334155;border:3px solid #ffffff;box-shadow:0 6px 14px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:#ffffff;font-size:16px;">
+      <div style="width:38px;height:38px;border-radius:12px;background:#0f172a;border:3px solid #38bdf8;box-shadow:0 6px 14px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#38bdf8;font-size:16px;">
         <i class="fa-solid fa-warehouse"></i>
+      </div>
+    `,
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+    popupAnchor: [0, -19],
+  });
+}
+
+function createPlantMarkerIcon() {
+  return L.divIcon({
+    className: '',
+    html: `
+      <div style="width:38px;height:38px;border-radius:12px;background:#7e22ce;border:3px solid #e9d5ff;box-shadow:0 6px 14px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#ffffff;font-size:16px;">
+        <i class="fa-solid fa-recycle"></i>
       </div>
     `,
     iconSize: [38, 38],
@@ -169,20 +155,33 @@ function MapController({ center, zoom, bounds }) {
   return null;
 }
 
-// ── Default Reference Depot and Truck Location ─────────────────────────────
-const CENTRAL_DEPOT = {
-  name: 'Pune Central Municipal Garage / Yard',
-  pos: [18.5204, 73.8567],
+// ── Default Reference Depot and Facilities ──────────────────────────────────
+const TRUCK_DEPOT = {
+  name: 'Truck Depot (Start)',
+  pos: [18.5500, 73.8000],
   id: 'DEPOT-01',
+};
+
+const RECYCLING_PLANT = {
+  name: 'Municipal Recycling Plant (End)',
+  pos: [18.4984, 73.9213],
+  id: 'PLANT-01',
 };
 
 // ── Main DriverDashboard Component ──────────────────────────────────────────
 export function DriverDashboard() {
-  const { bins, markBinCollected, resetDriverRoute } = useApp();
-  const [truckPos, setTruckPos] = useState([18.5204, 73.8567]); // Live Truck Position
-  const [routeCoords, setRouteCoords] = useState([]);
-  const [routeStats, setRouteStats] = useState({ distanceKm: '0.0', durationMin: 0 });
-  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+  // Read exact routePath and criticalBins directly from Global Context
+  const {
+    bins = [],
+    criticalBins = [],
+    routePath = [],
+    routeStats = { distanceKm: '0.0', durationMin: 0 },
+    markBinCollected,
+    resetDriverRoute,
+    isRouteActive,
+  } = useApp();
+
+  const [truckPos, setTruckPos] = useState(TRUCK_DEPOT.pos); // Live Truck Position starts at Depot
   const [bannerNotice, setBannerNotice] = useState(null);
   const [currentSpeed, setCurrentSpeed] = useState(26);
   const [currentTime, setCurrentTime] = useState('');
@@ -199,96 +198,76 @@ export function DriverDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // Compute Uncollected Critical Bins for Driver Route A
-  // A bin is considered on the active route if it has pos coords and is not marked collected (or fillPct >= 80)
+  // Compute Uncollected Critical Bins for Driver Route
+  // Read directly from criticalBins in Global Context (the exact route Municipal dispatcher generated)
   const activeCriticalBins = useMemo(() => {
+    if (criticalBins && criticalBins.length > 0) {
+      return criticalBins.filter((b) => {
+        if (!b.pos) return false;
+        const isCollected = b.collected === true || (b.status && b.status.toLowerCase().includes('normal') && b.fillPct === 0);
+        const isCritical = b.fillPct >= 80 || (b.status && b.status.toLowerCase().includes('critical')) || b.urgency === 'high';
+        return isCritical && !isCollected;
+      });
+    }
     return (bins || []).filter((b) => {
       if (!b.pos) return false;
       const isCritical = b.fillPct >= 80 || (b.status && b.status.toLowerCase().includes('critical'));
-      const isCollected = b.collected === true || (b.status && b.status.toLowerCase().includes('normal') && b.fillPct < 50);
+      const isCollected = b.collected === true || (b.status && b.status.toLowerCase().includes('normal') && b.fillPct === 0);
       return isCritical && !isCollected;
     });
-  }, [bins]);
+  }, [criticalBins, bins]);
 
   // Collected Bins (turned to Normal / Green)
   const collectedBins = useMemo(() => {
     return (bins || []).filter((b) => {
       if (!b.pos) return false;
-      return b.collected === true || (b.status && b.status.toLowerCase().includes('normal') && b.fillPct < 50);
+      return b.collected === true || (b.status && b.status.toLowerCase().includes('normal') && b.fillPct === 0);
     });
   }, [bins]);
 
   // The immediate Next Target Bin is the first uncollected bin
   const currentTargetBin = activeCriticalBins[0] || null;
 
-  // Whenever the active waypoints change, fetch the real OSRM street route
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function updateRouteGeometry() {
-      setIsLoadingRoute(true);
-
-      // Build route points: Truck pos -> all uncollected bins -> Central Depot
-      const waypoints = [
-        truckPos,
-        ...activeCriticalBins.map((b) => b.pos),
-      ];
-
-      // If all critical bins collected, route directly back to Depot
-      if (activeCriticalBins.length === 0) {
-        waypoints.push(CENTRAL_DEPOT.pos);
-      }
-
-      if (waypoints.length >= 2) {
-        const result = await fetchDriverOSRMRoute(waypoints);
-        if (!isCancelled && result && result.coords) {
-          setRouteCoords(result.coords);
-          setRouteStats({
-            distanceKm: result.distanceKm,
-            durationMin: result.durationMin,
-          });
-        }
-      } else {
-        if (!isCancelled) {
-          setRouteCoords([]);
-          setRouteStats({ distanceKm: '0.0', durationMin: 0 });
-        }
-      }
-
-      if (!isCancelled) setIsLoadingRoute(false);
-    }
-
-    updateRouteGeometry();
-    return () => { isCancelled = true; };
-  }, [activeCriticalBins, truckPos]);
+  // The Driver map reads routePath directly from Global Context (does NOT generate its own route)
+  const routeCoords = routePath && routePath.length > 0 ? routePath : [];
 
   // Compute bounding box for auto-fitting the map view
   const mapBounds = useMemo(() => {
-    const pts = [truckPos];
-    if (currentTargetBin) pts.push(currentTargetBin.pos);
-    activeCriticalBins.forEach((b) => pts.push(b.pos));
-    if (pts.length < 2) pts.push(CENTRAL_DEPOT.pos);
+    const pts = [truckPos, TRUCK_DEPOT.pos, RECYCLING_PLANT.pos];
+    if (currentTargetBin && currentTargetBin.pos) pts.push(currentTargetBin.pos);
+    activeCriticalBins.forEach((b) => {
+      if (b.pos) pts.push(b.pos);
+    });
+    if (routeCoords && routeCoords.length > 0) {
+      pts.push(routeCoords[0]);
+      pts.push(routeCoords[routeCoords.length - 1]);
+    }
     return pts;
-  }, [truckPos, currentTargetBin, activeCriticalBins]);
+  }, [truckPos, currentTargetBin, activeCriticalBins, routeCoords]);
 
   // ── CORE ACTION: "Mark Current Bin Collected" ──────────────────────────────
   const handleMarkCurrentBinCollected = () => {
     if (!currentTargetBin) return;
 
     const collectedTarget = currentTargetBin;
-    const binId = collectedTarget.id;
+    const binId = collectedTarget.id || collectedTarget.code;
 
-    // 1. Update Global Context: Changes bin status from "Critical (Red)" to "Normal (Green)"
+    // 1. Update Global Context & Firebase:
+    //    - Removes bin from driver's active route array (criticalBins)
+    //    - Updates bin status to "Normal", fill level to 0%, and color to Green
+    //    - Clears Red marker on Municipal map and removes from Priority Collection List without refresh
     if (typeof markBinCollected === 'function') {
       markBinCollected(binId);
-    } else if (typeof window !== 'undefined' && window.markBinCollectedInContext) {
-      window.markBinCollectedInContext(binId);
     } else if (appStore?.actions?.markBinCollected) {
       appStore.actions.markBinCollected(binId);
+    } else if (typeof window !== 'undefined' && window.markBinCollectedInContext) {
+      window.markBinCollectedInContext(binId);
     }
 
     // 2. Advance simulated truck position to this bin's location
-    setTruckPos(collectedTarget.pos);
+    if (collectedTarget.pos) {
+      setTruckPos(collectedTarget.pos);
+    }
 
     // 3. Play audio chime feedback
     playCollectChime();
@@ -299,14 +278,14 @@ export function DriverDashboard() {
       setBannerNotice({
         type: 'success',
         title: `Stop Collected: ${collectedTarget.name} (${binId})`,
-        message: `Status updated to Normal (Green). Route recalibrated to next stop (${remainingCount} bins remaining).`,
+        message: `Status updated to Normal (Green) • Fill level reset to 0%. Cleared from active route (${remainingCount} stops remaining).`,
       });
     } else {
       playCompletionFanfare();
       setBannerNotice({
         type: 'done',
         title: `🎉 All Assigned Bins Collected!`,
-        message: `Route A complete. All critical bins cleared from active queue. Proceed back to Central Depot.`,
+        message: `Dispatched route complete! All critical bins cleared from active queue. Proceed to Municipal Recycling Plant for offloading.`,
       });
     }
 
@@ -319,14 +298,16 @@ export function DriverDashboard() {
   const handleResetRoute = () => {
     if (typeof resetDriverRoute === 'function') {
       resetDriverRoute();
+    } else if (appStore?.actions?.resetDriverRoute) {
+      appStore.actions.resetDriverRoute();
     } else if (typeof window !== 'undefined' && window.resetDriverRouteInContext) {
       window.resetDriverRouteInContext();
     }
-    setTruckPos(CENTRAL_DEPOT.pos);
+    setTruckPos(TRUCK_DEPOT.pos);
     setBannerNotice({
       type: 'info',
       title: 'Route Simulation Reset',
-      message: 'Restored all Route A critical bins for collection testing.',
+      message: 'Restored all critical bins and reset baseline for collection testing.',
     });
     setTimeout(() => setBannerNotice(null), 4000);
   };
@@ -526,13 +507,15 @@ export function DriverDashboard() {
       <div className="px-4 sm:px-6 flex-1 flex flex-col min-h-[460px] sm:min-h-[520px] relative mt-2">
         <div className="w-full flex-1 rounded-3xl overflow-hidden border-2 border-slate-800 shadow-2xl relative bg-slate-900">
           
-          {/* Map Loading Overlay */}
-          {isLoadingRoute && (
-            <div className="absolute top-4 left-4 z-[500] px-3.5 py-2 rounded-xl bg-slate-900/90 text-sky-400 border border-sky-500/40 text-xs font-bold flex items-center gap-2 shadow-lg backdrop-blur-md">
-              <i className="fa-solid fa-circle-notch fa-spin"></i>
-              <span>OSRM Recalibrating Street Geometry...</span>
-            </div>
-          )}
+          {/* Dispatched Route Status Overlay */}
+          <div className="absolute top-4 left-4 z-[500] px-3.5 py-2 rounded-xl bg-slate-900/90 text-sky-400 border border-sky-500/40 text-xs font-bold flex items-center gap-2 shadow-lg backdrop-blur-md">
+            <i className="fa-solid fa-route text-sky-400"></i>
+            <span>
+              {routeCoords.length > 0
+                ? `Municipal Route Dispatched: ${routeStats.distanceKm} km • ${routeStats.durationMin}m`
+                : 'Awaiting Municipal Dispatch'}
+            </span>
+          </div>
 
           {/* Map Quick Badges Overlay */}
           <div className="absolute top-4 right-4 z-[500] flex flex-col gap-2">
@@ -570,12 +553,22 @@ export function DriverDashboard() {
               </Popup>
             </Marker>
 
-            {/* Central Depot Location Marker */}
-            <Marker position={CENTRAL_DEPOT.pos} icon={createDepotMarkerIcon()}>
+            {/* Truck Depot (Start) Location Marker */}
+            <Marker position={TRUCK_DEPOT.pos} icon={createDepotMarkerIcon()}>
               <Popup>
                 <div className="p-2 text-slate-900">
-                  <div className="font-extrabold text-sm">{CENTRAL_DEPOT.name}</div>
-                  <div className="text-xs text-slate-600">Base Depot &amp; Maintenance Yard</div>
+                  <div className="font-extrabold text-sm">{TRUCK_DEPOT.name}</div>
+                  <div className="text-xs text-slate-600">Route Start Point • Municipal Fleet Garage</div>
+                </div>
+              </Popup>
+            </Marker>
+
+            {/* Municipal Recycling Plant (End) Location Marker */}
+            <Marker position={RECYCLING_PLANT.pos} icon={createPlantMarkerIcon()}>
+              <Popup>
+                <div className="p-2 text-slate-900">
+                  <div className="font-extrabold text-sm">{RECYCLING_PLANT.name}</div>
+                  <div className="text-xs text-slate-600">Route End Point • Ramtekdi Processing Center</div>
                 </div>
               </Popup>
             </Marker>

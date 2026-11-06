@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase.js';
 
 // ── Initial State Seed Data ──────────────────────────────────────────────────
@@ -189,14 +189,48 @@ const INITIAL_TRUCKS = [
 // ── Global Reactive Store (Bridge for Context across separate React roots) ───
 class GlobalAppStore {
   constructor() {
+    const initialCritical = INITIAL_BINS.filter(
+      (b) => b.fillPct >= 80 || (b.status && b.status.toLowerCase().includes('critical'))
+    );
     this.state = {
       citizenReports: INITIAL_REPORTS,
       greenPoints: 450,
       bins: INITIAL_BINS,
       trucks: INITIAL_TRUCKS,
       isSimulated: false,
+      routePath: [],
+      criticalBins: initialCritical,
+      routeStats: { distanceKm: '0.0', durationMin: 0 },
+      isRouteActive: false,
     };
     this.listeners = new Set();
+
+    // Pre-calculate initial dispatched route in background if routePath is empty
+    if (typeof fetch !== 'undefined') {
+      const waypoints = [
+        [18.5500, 73.8000], // Truck Depot
+        ...initialCritical.map((b) => b.pos),
+        [18.4984, 73.9213], // Recycling Plant
+      ];
+      const coordsStr = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
+      fetch(`https://router.project-osrm.org/trip/v1/driving/${coordsStr}?roundtrip=false&source=first&destination=last&overview=full&geometries=geojson`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data?.code === 'Ok' && data?.trips?.[0]?.geometry?.coordinates) {
+            const leafletCoords = data.trips[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+            const distanceKm = (data.trips[0].distance / 1000).toFixed(1);
+            const durationMin = Math.round(data.trips[0].duration / 60);
+            if (this.state.routePath.length === 0) {
+              this.setState({
+                routePath: leafletCoords,
+                routeStats: { distanceKm, durationMin },
+                isRouteActive: true,
+              });
+            }
+          }
+        })
+        .catch(() => {});
+    }
 
     this.actions = {
       // 1. Citizen to Municipal Sync: push report to Context array
@@ -342,41 +376,134 @@ class GlobalAppStore {
         return newTruck;
       },
 
-      // 4. Driver Action: Mark bin collected, transition from Critical (Red) to Normal (Green), remove from route
+      // Municipal Dispatcher to Driver Route Sync
+      setDispatchedRoute: ({ routePath, criticalBins, routeStats }) => {
+        this.setState((prev) => ({
+          routePath: routePath || prev.routePath,
+          criticalBins: criticalBins || prev.criticalBins,
+          routeStats: routeStats || prev.routeStats,
+          isRouteActive: true,
+        }));
+        this.syncDOM();
+      },
+
+      // 4. Driver Action: Mark bin collected, transition to Normal (Green), set fill level to 0%, remove from route
       markBinCollected: (binId) => {
         let updatedTarget = null;
+        const normalizedId = String(binId).trim().toUpperCase();
+
         this.setState((prev) => {
+          // Update that specific bin's status to Normal, fill level to 0%, icon to Green
           const updatedBins = prev.bins.map((bin) => {
-            const matches = bin.id === binId || bin.id.replace('-', '') === String(binId).replace('-', '');
+            const matches = String(bin.id).toUpperCase() === normalizedId ||
+                            String(bin.code).toUpperCase() === normalizedId ||
+                            String(bin.id).replace(/[^a-zA-Z0-9]/g, '') === normalizedId.replace(/[^a-zA-Z0-9]/g, '');
             if (matches) {
               updatedTarget = {
                 ...bin,
-                baseFill: 12,
-                fillPct: 12,
-                status: 'Normal (Green)',
+                baseFill: 0,
+                fillPct: 0,
+                fillPercent: 0,
+                status: 'Normal',
+                label: 'Normal',
+                urgency: 'low',
                 collected: true,
                 lastPickup: 'Just now',
+                priorityScore: 0,
               };
               return updatedTarget;
             }
             return bin;
           });
 
+          // Remove the bin from the driver's active criticalBins array
+          const updatedCriticalBins = (prev.criticalBins || []).filter((b) => {
+            const matches = String(b.id).toUpperCase() === normalizedId ||
+                            String(b.code).toUpperCase() === normalizedId ||
+                            String(b.id).replace(/[^a-zA-Z0-9]/g, '') === normalizedId.replace(/[^a-zA-Z0-9]/g, '');
+            return !matches;
+          });
+
           return {
             bins: updatedBins,
+            criticalBins: updatedCriticalBins,
+            routePath: updatedCriticalBins.length === 0 ? [] : prev.routePath,
           };
         });
 
-        // Also sync simulation state if window.state exists
-        if (typeof window !== 'undefined' && window.state && Array.isArray(window.state.bins)) {
-          window.state.bins.forEach((b) => {
-            if (b.id === binId || b.id.replace('-', '') === String(binId).replace('-', '')) {
-              b.fillPercent = 12;
-              b.status = 'ok';
-              b.urgency = 'low';
-              b.collected = true;
+        // Mutate master wardBins in MapComponent so Municipal Dashboard automatically syncs without refresh
+        if (typeof window !== 'undefined') {
+          if (window.wardBins && Array.isArray(window.wardBins)) {
+            window.wardBins.forEach((b) => {
+              if (String(b.id).toUpperCase() === normalizedId ||
+                  String(b.code).toUpperCase() === normalizedId ||
+                  String(b.id).replace(/[^a-zA-Z0-9]/g, '') === normalizedId.replace(/[^a-zA-Z0-9]/g, '')) {
+                b.fillPct = 0;
+                b.fillPercent = 0;
+                b.status = 'Normal';
+                b.label = 'Normal';
+                b.urgency = 'low';
+                b.collected = true;
+                b.lastPickup = 'Just now';
+                b.priorityScore = 0;
+                if (window.greenIcon) b.icon = window.greenIcon;
+              }
+            });
+
+            // Update Municipal Map state immediately
+            if (typeof window.updateMapBins === 'function') {
+              window.updateMapBins([...window.wardBins]);
             }
-          });
+            // Re-render Priority List immediately (removes collected bin)
+            if (typeof window.renderPriorityListUI === 'function') {
+              window.renderPriorityListUI([...window.wardBins]);
+            }
+          }
+
+          // Also sync legacy state if window.state exists
+          if (window.state && Array.isArray(window.state.bins)) {
+            window.state.bins.forEach((b) => {
+              if (String(b.id).toUpperCase() === normalizedId || String(b.code).toUpperCase() === normalizedId) {
+                b.fillPercent = 0;
+                b.fillPct = 0;
+                b.status = 'ok';
+                b.urgency = 'low';
+                b.collected = true;
+              }
+            });
+          }
+
+          // Update Municipal counter badges
+          if (window.wardBins) {
+            const crit = window.wardBins.filter(b => (b.fillPct >= 80 || b.status === 'Critical') && !b.collected).length;
+            const el = document.getElementById('muniHighBins');
+            if (el) el.textContent = `${crit} Bins Require Collection`;
+          }
+
+          // Update Firebase Firestore if available
+          try {
+            if (typeof window.updateBinStatusInDB === 'function') {
+              window.updateBinStatusInDB(normalizedId, {
+                status: 'Normal',
+                fillPct: 0,
+                fillPercent: 0,
+                collected: true,
+                lastPickup: 'Just now'
+              });
+            } else if (db) {
+              const binDocRef = doc(db, 'bins', normalizedId);
+              setDoc(binDocRef, {
+                id: normalizedId,
+                status: 'Normal',
+                fillPct: 0,
+                fillPercent: 0,
+                collected: true,
+                lastPickup: 'Just now'
+              }, { merge: true }).catch((e) => console.error("Firestore bin update error:", e));
+            }
+          } catch (dbErr) {
+            console.error("Firestore database update failed in markBinCollected:", dbErr);
+          }
         }
 
         this.syncDOM();
@@ -385,13 +512,16 @@ class GlobalAppStore {
 
       // Reset driver route collections
       resetDriverRoute: () => {
+        const initialCritical = INITIAL_BINS.filter((b) => b.fillPct >= 80 || (b.status && b.status.toLowerCase().includes('critical')));
         this.setState({
           bins: INITIAL_BINS.map((b) => ({ ...b })),
+          criticalBins: initialCritical,
+          routePath: [],
         });
-        if (typeof window !== 'undefined' && window.state && Array.isArray(window.state.bins)) {
-          window.state.bins.forEach((b) => {
-            b.collected = false;
-          });
+        if (typeof window !== 'undefined') {
+          if (typeof window.resetTimeSimulation === 'function') {
+            window.resetTimeSimulation();
+          }
         }
         this.syncDOM();
       },

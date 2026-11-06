@@ -232,6 +232,22 @@ export async function generateOptimalRouteBackend(wardId = 'Ward 4') {
   });
 }
 
+// Updates bin status in Firestore database with try/catch error handling
+export async function updateBinStatusInDB(binId, updateData = {}) {
+  try {
+    if (db) {
+      const binRef = doc(db, 'bins', String(binId));
+      await setDoc(binRef, {
+        ...updateData,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      console.info(`Bin ${binId} successfully updated in Firestore:`, updateData);
+    }
+  } catch (err) {
+    console.error(`Error updating bin ${binId} status in Firestore:`, err);
+  }
+}
+
 // Expose globals for window bindings
 window.firebaseApp = app;
 window.firestoreDb = db;
@@ -245,5 +261,6 @@ window.updateUserProfilePointsInDB = updateUserProfilePointsInDB;
 window.fetchBinsFromDB = fetchBinsFromDB;
 window.generateOptimalRouteBackend = generateOptimalRouteBackend;
 window.updateAuthNavbarUI = updateAuthNavbarUI;
+window.updateBinStatusInDB = updateBinStatusInDB;
 
 export { app };
