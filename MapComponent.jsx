@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { createPortal } from 'react-dom';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { fetchBinsFromDB } from './firebase.js';
@@ -616,6 +617,31 @@ if (typeof window !== 'undefined') {
   window.resetTimeSimulation = resetTimeSimulation;
 }
 
+// ── Static Mock Heatmap Coordinates (20 points clustered around FC Road [18.5262, 73.8441]) ──
+export const mockHeatmapPoints = [
+  { id: 1,  pos: [18.5262, 73.8441], center: [18.5262, 73.8441], lat: 18.5262, lng: 73.8441 },
+  { id: 2,  pos: [18.5275, 73.8432], center: [18.5275, 73.8432], lat: 18.5275, lng: 73.8432 },
+  { id: 3,  pos: [18.5250, 73.8455], center: [18.5250, 73.8455], lat: 18.5250, lng: 73.8455 },
+  { id: 4,  pos: [18.5281, 73.8460], center: [18.5281, 73.8460], lat: 18.5281, lng: 73.8460 },
+  { id: 5,  pos: [18.5242, 73.8428], center: [18.5242, 73.8428], lat: 18.5242, lng: 73.8428 },
+  { id: 6,  pos: [18.5269, 73.8452], center: [18.5269, 73.8452], lat: 18.5269, lng: 73.8452 },
+  { id: 7,  pos: [18.5258, 73.8436], center: [18.5258, 73.8436], lat: 18.5258, lng: 73.8436 },
+  { id: 8,  pos: [18.5288, 73.8425], center: [18.5288, 73.8425], lat: 18.5288, lng: 73.8425 },
+  { id: 9,  pos: [18.5235, 73.8450], center: [18.5235, 73.8450], lat: 18.5235, lng: 73.8450 },
+  { id: 10, pos: [18.5270, 73.8468], center: [18.5270, 73.8468], lat: 18.5270, lng: 73.8468 },
+  { id: 11, pos: [18.5255, 73.8415], center: [18.5255, 73.8415], lat: 18.5255, lng: 73.8415 },
+  { id: 12, pos: [18.5292, 73.8445], center: [18.5292, 73.8445], lat: 18.5292, lng: 73.8445 },
+  { id: 13, pos: [18.5248, 73.8462], center: [18.5248, 73.8462], lat: 18.5248, lng: 73.8462 },
+  { id: 14, pos: [18.5265, 73.8420], center: [18.5265, 73.8420], lat: 18.5265, lng: 73.8420 },
+  { id: 15, pos: [18.5278, 73.8439], center: [18.5278, 73.8439], lat: 18.5278, lng: 73.8439 },
+  { id: 16, pos: [18.5239, 73.8435], center: [18.5239, 73.8435], lat: 18.5239, lng: 73.8435 },
+  { id: 17, pos: [18.5285, 73.8458], center: [18.5285, 73.8458], lat: 18.5285, lng: 73.8458 },
+  { id: 18, pos: [18.5252, 73.8448], center: [18.5252, 73.8448], lat: 18.5252, lng: 73.8448 },
+  { id: 19, pos: [18.5268, 73.8412], center: [18.5268, 73.8412], lat: 18.5268, lng: 73.8412 },
+  { id: 20, pos: [18.5273, 73.8475], center: [18.5273, 73.8475], lat: 18.5273, lng: 73.8475 },
+];
+export const mockHeatmapArray = mockHeatmapPoints;
+
 export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   // State Management: wardBins array stored in React state variable
   const [bins, setBins] = useState(wardBins);
@@ -623,7 +649,29 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   const [showRoute, setShowRoute] = useState(false);
   const [routePositions, setRoutePositions] = useState([]);
   const [isRoutingLoading, setIsRoutingLoading] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [portalTarget, setPortalTarget] = useState(() => (typeof document !== 'undefined' ? document.getElementById('heatmapToggleRoot') : null));
   const markerRefs = useRef({});
+
+  useEffect(() => {
+    const updateTarget = () => {
+      if (typeof document !== 'undefined') {
+        const el = document.getElementById('heatmapToggleRoot');
+        if (el) setPortalTarget(el);
+      }
+    };
+    updateTarget();
+    const timer = setTimeout(updateTarget, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.showHeatmap = showHeatmap;
+      window.setShowHeatmap = setShowHeatmap;
+      window.toggleHeatmap = () => setShowHeatmap((prev) => !prev);
+    }
+  }, [showHeatmap]);
 
   // Simulate Logic: attached to the "Simulate +6h Waste" button's onClick event
   const simulateTimeAdvance = useCallback(() => {
@@ -974,8 +1022,32 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
     };
   }, [allowRoute, redBins]);
 
+  const heatmapToggleBtn = allowRoute ? (
+    <button
+      id="btnToggleHeatmap"
+      type="button"
+      onClick={() => setShowHeatmap((prev) => !prev)}
+      className={`px-4 py-2.5 text-xs font-bold rounded-2xl shadow-md transition-all flex items-center gap-2 active:scale-95 cursor-pointer ${
+        showHeatmap
+          ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/30 ring-2 ring-rose-400'
+          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/30'
+      }`}
+      title="Toggle Predictive Waste Heatmap"
+    >
+      <i className={showHeatmap ? 'fa-solid fa-map' : 'fa-solid fa-fire'}></i>
+      <span>{showHeatmap ? 'Show Standard Route' : 'Show Predictive Heatmap'}</span>
+    </button>
+  ) : null;
+
   return (
     <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: height, minHeight: height }}>
+      {/* Portal Heatmap Toggle Button next to "Generate Optimal Route" */}
+      {portalTarget && heatmapToggleBtn && createPortal(heatmapToggleBtn, portalTarget)}
+      {!portalTarget && allowRoute && (
+        <div className="absolute top-3 right-3 z-[500]">
+          {heatmapToggleBtn}
+        </div>
+      )}
       {/* Skeleton loader / "Loading Map Data..." overlay */}
       {isLoading && (
         <div 
@@ -1017,169 +1089,192 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
           maxZoom={19}
         />
 
-        {/* OSRM Real Street Geometry Polyline */}
-        {showRoute && routePositions.length > 0 && (
-          <Polyline
-            positions={routePositions}
-            color="#2563eb"
-            dashArray="6, 6"
-            weight={4}
-            pathOptions={{
-              color: '#2563eb',
-              dashArray: '6, 6',
-              weight: 4,
-            }}
-          />
-        )}
+        {/* Predictive Heatmap Mode vs Standard Route & Bins */}
+        {showHeatmap ? (
+          mockHeatmapPoints.map((point, index) => (
+            <Circle
+              key={point.id || index}
+              center={point.pos || point.center || [point.lat, point.lng]}
+              radius={400}
+              color="red"
+              fillColor="#f03"
+              fillOpacity={0.4}
+              stroke={false}
+              pathOptions={{
+                color: 'red',
+                fillColor: '#f03',
+                fillOpacity: 0.4,
+                stroke: false,
+              }}
+            />
+          ))
+        ) : (
+          <>
+            {/* OSRM Real Street Geometry Polyline */}
+            {showRoute && routePositions.length > 0 && (
+              <Polyline
+                positions={routePositions}
+                color="#2563eb"
+                dashArray="6, 6"
+                weight={4}
+                pathOptions={{
+                  color: '#2563eb',
+                  dashArray: '6, 6',
+                  weight: 4,
+                }}
+              />
+            )}
 
-        {/* Permanent Facility 1: Truck Depot (Start) [18.5500, 73.8000] */}
-        <Marker position={TRUCK_DEPOT.pos} icon={depotIcon}>
-          <Popup className="eco-facility-popup">
-            <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '220px', padding: '2px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
-                <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a' }}>
-                  {TRUCK_DEPOT.name}
-                </div>
-                <span style={{
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  padding: '2px 8px',
-                  borderRadius: '9999px',
-                  backgroundColor: '#0f172a',
-                  color: '#38bdf8',
-                  border: '1px solid #38bdf8'
-                }}>
-                  START DEPOT
-                </span>
-              </div>
-              <div style={{ fontSize: '11px', background: '#f8fafc', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div>
-                  <span style={{ color: '#64748b', fontSize: '10px', fontWeight: 500, display: 'block' }}>Operational Facility</span>
-                  <strong style={{ color: '#1e293b' }}>{TRUCK_DEPOT.role}</strong>
-                </div>
-                <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '4px' }}>
-                  <span style={{ color: '#64748b', fontSize: '10px', fontWeight: 500, display: 'block' }}>GPS Coordinates</span>
-                  <code style={{ fontSize: '10px', color: '#0284c7' }}>18.5500° N, 73.8000° E</code>
-                </div>
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-
-        {/* Permanent Facility 2: Municipal Recycling Plant (End) [18.4984, 73.9213] */}
-        <Marker position={RECYCLING_PLANT.pos} icon={plantIcon}>
-          <Popup className="eco-facility-popup">
-            <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '220px', padding: '2px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
-                <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a' }}>
-                  {RECYCLING_PLANT.name}
-                </div>
-                <span style={{
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  padding: '2px 8px',
-                  borderRadius: '9999px',
-                  backgroundColor: '#581c87',
-                  color: '#e9d5ff',
-                  border: '1px solid #a855f7'
-                }}>
-                  END DESTINATION
-                </span>
-              </div>
-              <div style={{ fontSize: '11px', background: '#faf5ff', padding: '8px 10px', borderRadius: '10px', border: '1px solid #f3e8ff', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div>
-                  <span style={{ color: '#7e22ce', fontSize: '10px', fontWeight: 500, display: 'block' }}>Processing Facility</span>
-                  <strong style={{ color: '#3b0764' }}>{RECYCLING_PLANT.role}</strong>
-                </div>
-                <div style={{ borderTop: '1px dashed #e9d5ff', paddingTop: '4px' }}>
-                  <span style={{ color: '#7e22ce', fontSize: '10px', fontWeight: 500, display: 'block' }}>GPS Coordinates</span>
-                  <code style={{ fontSize: '10px', color: '#7e22ce' }}>18.4984° N, 73.9213° E</code>
-                </div>
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-
-        {/* Detailed Map Popups with Bin Name, Status, Capacity, Waste Type, and Last Pickup Date */}
-        {binList.map((bin) => (
-          <Marker
-            key={`${bin.id}-${bin.fillPct}-${bin.status}-${bin.collected ? 'col' : 'pend'}`}
-            position={bin.pos}
-            icon={bin.icon}
-            ref={(ref) => {
-              if (ref) {
-                markerRefs.current[bin.id] = ref;
-                markerRefs.current[String(bin.id)] = ref;
-                if (bin.code) {
-                  markerRefs.current[bin.code] = ref;
-                  markerRefs.current[String(bin.code)] = ref;
-                }
-              }
-            }}
-          >
-            <Popup className="eco-bin-popup">
-              <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '220px', padding: '2px' }}>
-                
-                {/* Header: Name and Status Badge */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '13px', color: '#0f172a' }}>
-                    {bin.name}
-                  </div>
-                  <span style={{
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    padding: '2px 8px',
-                    borderRadius: '9999px',
-                    backgroundColor: bin.label === 'Critical' ? '#fee2e2' : bin.label === 'Warning' ? '#ffedd5' : '#dcfce7',
-                    color: bin.label === 'Critical' ? '#b91c1c' : bin.label === 'Warning' ? '#c2410c' : '#15803d',
-                    border: `1px solid ${bin.label === 'Critical' ? '#fca5a5' : bin.label === 'Warning' ? '#fdba74' : '#86efac'}`
-                  }}>
-                    {bin.label}
-                  </span>
-                </div>
-
-                {/* Fill Meter Bar */}
-                <div style={{ marginBottom: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>
-                    <span>Fill Level</span>
-                    <strong style={{ color: bin.label === 'Critical' ? '#ef4444' : bin.label === 'Warning' ? '#f97316' : '#22c55e' }}>
-                      {bin.fillPct}%
-                    </strong>
-                  </div>
-                  <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${bin.fillPct}%`,
-                      height: '100%',
-                      backgroundColor: bin.label === 'Critical' ? '#ef4444' : bin.label === 'Warning' ? '#f97316' : '#22c55e',
+            {/* Permanent Facility 1: Truck Depot (Start) [18.5500, 73.8000] */}
+            <Marker position={TRUCK_DEPOT.pos} icon={depotIcon}>
+              <Popup className="eco-facility-popup">
+                <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '220px', padding: '2px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a' }}>
+                      {TRUCK_DEPOT.name}
+                    </div>
+                    <span style={{
+                      fontSize: '9px',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      padding: '2px 8px',
                       borderRadius: '9999px',
-                      transition: 'width 0.3s'
-                    }}></div>
+                      backgroundColor: '#0f172a',
+                      color: '#38bdf8',
+                      border: '1px solid #38bdf8'
+                    }}>
+                      START DEPOT
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '11px', background: '#f8fafc', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div>
+                      <span style={{ color: '#64748b', fontSize: '10px', fontWeight: 500, display: 'block' }}>Operational Facility</span>
+                      <strong style={{ color: '#1e293b' }}>{TRUCK_DEPOT.role}</strong>
+                    </div>
+                    <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '4px' }}>
+                      <span style={{ color: '#64748b', fontSize: '10px', fontWeight: 500, display: 'block' }}>GPS Coordinates</span>
+                      <code style={{ fontSize: '10px', color: '#0284c7' }}>18.5500° N, 73.8000° E</code>
+                    </div>
                   </div>
                 </div>
+              </Popup>
+            </Marker>
 
-                {/* Detailed Specifications Card: Capacity, Waste Type, Last Pickup Date */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '11px', background: '#f8fafc', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block', fontSize: '10px', fontWeight: 500 }}>Capacity</span>
-                    <strong style={{ color: '#1e293b' }}>{bin.capacity}</strong>
+            {/* Permanent Facility 2: Municipal Recycling Plant (End) [18.4984, 73.9213] */}
+            <Marker position={RECYCLING_PLANT.pos} icon={plantIcon}>
+              <Popup className="eco-facility-popup">
+                <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '220px', padding: '2px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a' }}>
+                      {RECYCLING_PLANT.name}
+                    </div>
+                    <span style={{
+                      fontSize: '9px',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      padding: '2px 8px',
+                      borderRadius: '9999px',
+                      backgroundColor: '#581c87',
+                      color: '#e9d5ff',
+                      border: '1px solid #a855f7'
+                    }}>
+                      END DESTINATION
+                    </span>
                   </div>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block', fontSize: '10px', fontWeight: 500 }}>Waste Type</span>
-                    <strong style={{ color: '#1e293b' }}>{bin.wasteType}</strong>
-                  </div>
-                  <div style={{ gridColumn: 'span 2', marginTop: '2px', borderTop: '1px dashed #e2e8f0', paddingTop: '4px' }}>
-                    <span style={{ color: '#64748b', display: 'block', fontSize: '10px', fontWeight: 500 }}>Last Pickup Date</span>
-                    <strong style={{ color: '#1e293b' }}>{bin.lastPickup}</strong>
+                  <div style={{ fontSize: '11px', background: '#faf5ff', padding: '8px 10px', borderRadius: '10px', border: '1px solid #f3e8ff', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div>
+                      <span style={{ color: '#7e22ce', fontSize: '10px', fontWeight: 500, display: 'block' }}>Processing Facility</span>
+                      <strong style={{ color: '#3b0764' }}>{RECYCLING_PLANT.role}</strong>
+                    </div>
+                    <div style={{ borderTop: '1px dashed #e9d5ff', paddingTop: '4px' }}>
+                      <span style={{ color: '#7e22ce', fontSize: '10px', fontWeight: 500, display: 'block' }}>GPS Coordinates</span>
+                      <code style={{ fontSize: '10px', color: '#7e22ce' }}>18.4984° N, 73.9213° E</code>
+                    </div>
                   </div>
                 </div>
+              </Popup>
+            </Marker>
 
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+            {/* Detailed Map Popups with Bin Name, Status, Capacity, Waste Type, and Last Pickup Date */}
+            {binList.map((bin) => (
+              <Marker
+                key={`${bin.id}-${bin.fillPct}-${bin.status}-${bin.collected ? 'col' : 'pend'}`}
+                position={bin.pos}
+                icon={bin.icon}
+                ref={(ref) => {
+                  if (ref) {
+                    markerRefs.current[bin.id] = ref;
+                    markerRefs.current[String(bin.id)] = ref;
+                    if (bin.code) {
+                      markerRefs.current[bin.code] = ref;
+                      markerRefs.current[String(bin.code)] = ref;
+                    }
+                  }
+                }}
+              >
+                <Popup className="eco-bin-popup">
+                  <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '220px', padding: '2px' }}>
+                    
+                    {/* Header: Name and Status Badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '13px', color: '#0f172a' }}>
+                        {bin.name}
+                      </div>
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        backgroundColor: bin.label === 'Critical' ? '#fee2e2' : bin.label === 'Warning' ? '#ffedd5' : '#dcfce7',
+                        color: bin.label === 'Critical' ? '#b91c1c' : bin.label === 'Warning' ? '#c2410c' : '#15803d',
+                        border: `1px solid ${bin.label === 'Critical' ? '#fca5a5' : bin.label === 'Warning' ? '#fdba74' : '#86efac'}`
+                      }}>
+                        {bin.label}
+                      </span>
+                    </div>
+
+                    {/* Fill Meter Bar */}
+                    <div style={{ marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>
+                        <span>Fill Level</span>
+                        <strong style={{ color: bin.label === 'Critical' ? '#ef4444' : bin.label === 'Warning' ? '#f97316' : '#22c55e' }}>
+                          {bin.fillPct}%
+                        </strong>
+                      </div>
+                      <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${bin.fillPct}%`,
+                          height: '100%',
+                          backgroundColor: bin.label === 'Critical' ? '#ef4444' : bin.label === 'Warning' ? '#f97316' : '#22c55e',
+                          borderRadius: '9999px',
+                          transition: 'width 0.3s'
+                        }}></div>
+                      </div>
+                    </div>
+
+                    {/* Detailed Specifications Card: Capacity, Waste Type, Last Pickup Date */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '11px', background: '#f8fafc', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '10px', fontWeight: 500 }}>Capacity</span>
+                        <strong style={{ color: '#1e293b' }}>{bin.capacity}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '10px', fontWeight: 500 }}>Waste Type</span>
+                        <strong style={{ color: '#1e293b' }}>{bin.wasteType}</strong>
+                      </div>
+                      <div style={{ gridColumn: 'span 2', marginTop: '2px', borderTop: '1px dashed #e2e8f0', paddingTop: '4px' }}>
+                        <span style={{ color: '#64748b', display: 'block', fontSize: '10px', fontWeight: 500 }}>Last Pickup Date</span>
+                        <strong style={{ color: '#1e293b' }}>{bin.lastPickup}</strong>
+                      </div>
+                    </div>
+
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </>
+        )}
       </MapContainer>
     </div>
   );
