@@ -1229,17 +1229,19 @@
       showCitizenBanner("E-Waste Pickup Scheduled for tomorrow 10:00 AM");
   };
 
-  // Async OSRM Real Route Generation with loading state
+  // Async OSRM Real Route Generation with loading state (TSP Solution)
   window.handleGenerateRouteWithLoading = async function(btn) {
       const button = btn || document.getElementById('btnGenerateOptimalRoute');
       const originalHtml = button ? button.innerHTML : '';
       if (button) {
           button.disabled = true;
-          button.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Calculating Street Route...</span>`;
+          button.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> <span>Solving TSP & Routing...</span>`;
       }
 
       try {
-          if (window.generateOSRMRoute) {
+          if (window.generateRealRoute) {
+              await window.generateRealRoute();
+          } else if (window.generateOSRMRoute) {
               await window.generateOSRMRoute();
           } else {
               window.dispatchEvent(new CustomEvent('ecoroute:show'));
@@ -1252,7 +1254,7 @@
 
           generateEcoRoute();
           if (window.setMapShowRoute) window.setMapShowRoute(true);
-          showSimAlert("✅ Optimal street route calculated via OSRM Street Engine!");
+          showSimAlert("✅ Optimal TSP route calculated via OSRM (Depot → Critical Bins → Recycling Plant)!");
       } catch (err) {
           console.error("Route calculation error:", err);
           showSimAlert(`❌ Route calculation failed: ${err.message || 'Error'}`);

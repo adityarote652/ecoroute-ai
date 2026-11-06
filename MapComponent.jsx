@@ -50,6 +50,57 @@ const redIcon    = makeDivIcon('#ef4444');   // Critical  >= 80%
 const orangeIcon = makeDivIcon('#f97316');   // Warning   50-79%
 const greenIcon  = makeDivIcon('#22c55e');   // Normal    < 50%
 
+// ── Permanent Facilities (Start / End) ──────────────────────────────────────
+export const TRUCK_DEPOT = {
+  id: 'FACILITY-DEPOT',
+  name: 'Truck Depot (Start)',
+  pos: [18.5500, 73.8000],
+  lat: 18.5500,
+  lng: 73.8000,
+  type: 'Start Depot',
+  role: 'Central Municipal Vehicle Depot & Staging Yard',
+  zone: 'Ward 12 Hub'
+};
+
+export const RECYCLING_PLANT = {
+  id: 'FACILITY-PLANT',
+  name: 'Municipal Recycling Plant (End)',
+  pos: [18.4984, 73.9213],
+  lat: 18.4984,
+  lng: 73.9213,
+  type: 'Recycling Plant',
+  role: 'Ramtekdi Solid Waste Processing Center & MRF',
+  zone: 'Hadapsar / Ramtekdi'
+};
+
+// ── Facility Icons: Distinct square icons with high contrast ─────────────────
+function makeFacilityIcon(bgColor, borderColor, iconClass, textColor = '#ffffff') {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width: 30px;
+      height: 30px;
+      background-color: ${bgColor};
+      border-radius: 8px;
+      border: 2px solid ${borderColor};
+      box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: ${textColor};
+      font-size: 13px;
+    ">
+      <i class="${iconClass}"></i>
+    </div>`,
+    iconSize:    [30, 30],
+    iconAnchor:  [15, 15],
+    popupAnchor: [0, -16],
+  });
+}
+
+export const depotIcon = makeFacilityIcon('#0f172a', '#38bdf8', 'fa-solid fa-warehouse', '#38bdf8');
+export const plantIcon = makeFacilityIcon('#7e22ce', '#e9d5ff', 'fa-solid fa-recycle', '#ffffff');
+
 let _muniMapInstance = null;
 let _citizenMapInstance = null;
 
@@ -81,39 +132,43 @@ function MapResizer({ onReady, isLoading, isMuni = true }) {
   return null;
 }
 
-// ── Helper: Fetch Real Street Driving Geometry via free OSRM API ─────────
-export async function fetchOSRMRoute(waypoints = []) {
+// ── Helper: Solve TSP & Fetch Real Street Geometry via OSRM Trip API ────────
+// Endpoint: https://router.project-osrm.org/trip/v1/driving/${coordinates}?roundtrip=false&source=first&destination=last&overview=full&geometries=geojson
+export async function fetchOSRMTrip(waypoints = []) {
   if (!waypoints || waypoints.length < 2) return null;
   // OSRM expects coordinates in {lng,lat;lng,lat} format
   const coordsStr = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
-  const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
+  const url = `https://router.project-osrm.org/trip/v1/driving/${coordsStr}?roundtrip=false&source=first&destination=last&overview=full&geometries=geojson`;
 
   try {
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`OSRM API responded with status ${response.status}`);
+    if (!response.ok) throw new Error(`OSRM Trip API responded with status ${response.status}`);
     const data = await response.json();
-    if (data.code === 'Ok' && data.routes && data.routes[0]?.geometry?.coordinates) {
+    if (data.code === 'Ok' && data.trips && data.trips[0]?.geometry?.coordinates) {
       // GeoJSON returns [lng, lat] -> convert to Leaflet's [lat, lng]
-      const leafletCoords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-      const distanceKm = (data.routes[0].distance / 1000).toFixed(1);
-      const durationMin = Math.round(data.routes[0].duration / 60);
+      const leafletCoords = data.trips[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      const distanceKm = (data.trips[0].distance / 1000).toFixed(1);
+      const durationMin = Math.round(data.trips[0].duration / 60);
       return {
         coords: leafletCoords,
         distanceKm,
-        durationMin
+        durationMin,
+        waypoints: data.waypoints
       };
     }
   } catch (err) {
-    console.warn("OSRM API fetch failed, using waypoints fallback:", err);
+    console.warn("OSRM Trip API fetch failed, using waypoints fallback:", err);
   }
 
   // Fallback to straight connection between waypoints if OSRM is unreachable
   return {
     coords: waypoints,
-    distanceKm: '18.2',
-    durationMin: 40
+    distanceKm: '22.8',
+    durationMin: 48
   };
 }
+
+export const fetchOSRMRoute = fetchOSRMTrip;
 
 // ── Unified Master Bins Array (wardBins) ───────────────────────────────────────
 // Single unified dataset for Pune Ward 12 & Municipal Dashboard.
@@ -437,28 +492,41 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
 
   const redBins = binList.filter((b) => b.label === 'Critical');
 
-  // Async function to fetch and display OSRM real street route
-  const generateOSRMRoute = async () => {
+  // Async function to solve TSP and display OSRM real street route
+  // Starts at Truck Depot [18.5500, 73.8000], visits all Critical bins, ends at Recycling Plant [18.4984, 73.9213]
+  const generateRealRoute = async () => {
     setIsRoutingLoading(true);
-    // Connect all Critical Red bins
-    const waypoints = redBins.length >= 2
-      ? redBins.map((b) => b.pos)
-      : [[18.5204, 73.8567], [18.4966, 73.9416]];
+
+    // Identify Critical bins to collect
+    const criticalBins = redBins.length > 0
+      ? redBins
+      : binList.filter((b) => b.fillPct >= 75 || b.urgency === 'high');
+
+    const middleCoords = criticalBins.length > 0
+      ? criticalBins.map((b) => b.pos)
+      : [[18.5204, 73.8567], [18.5367, 73.8242], [18.5262, 73.8441]];
+
+    // Always start with Truck Depot, include all Critical bins, and end with Municipal Recycling Plant
+    const waypoints = [
+      TRUCK_DEPOT.pos,
+      ...middleCoords,
+      RECYCLING_PLANT.pos
+    ];
 
     try {
-      const result = await fetchOSRMRoute(waypoints);
+      const result = await fetchOSRMTrip(waypoints);
       if (result && result.coords) {
         setRoutePositions(result.coords);
         setShowRoute(true);
 
-        // Update stats
+        // Update stats on Municipal Dashboard
         const fixedDistEl = document.getElementById('optFixedDist');
         const selectDistEl = document.getElementById('optSelectDist');
         const distSavingsEl = document.getElementById('optDistSavings');
         const co2SavedEl = document.getElementById('optCO2Saved');
         const countEl = document.getElementById('mapRouteBinCount');
 
-        if (countEl) countEl.textContent = redBins.length || 2;
+        if (countEl) countEl.textContent = criticalBins.length || middleCoords.length;
         if (fixedDistEl) fixedDistEl.textContent = '38.4 km';
         if (selectDistEl) selectDistEl.textContent = `${result.distanceKm} km`;
         if (distSavingsEl) {
@@ -472,17 +540,20 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
         return result;
       }
     } catch (e) {
-      console.error("OSRM Route Generation Error:", e);
+      console.error("OSRM TSP Route Generation Error:", e);
     } finally {
       setIsRoutingLoading(false);
     }
   };
 
-  // Expose OSRM generator and flyTo directly on window
+  const generateOSRMRoute = generateRealRoute;
+
+  // Expose TSP route generator and flyTo directly on window
   useEffect(() => {
     if (!allowRoute) return;
 
-    window.generateOSRMRoute = generateOSRMRoute;
+    window.generateRealRoute = generateRealRoute;
+    window.generateOSRMRoute = generateRealRoute;
     window.setMapShowRoute = (val) => {
       setShowRoute(val);
       if (!val) setRoutePositions([]);
@@ -517,7 +588,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
       }
     };
 
-    const handleShowRoute = () => generateOSRMRoute();
+    const handleShowRoute = () => generateRealRoute();
     const handleClearRoute = () => {
       setShowRoute(false);
       setRoutePositions([]);
@@ -615,6 +686,76 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
             }}
           />
         )}
+
+        {/* Permanent Facility 1: Truck Depot (Start) [18.5500, 73.8000] */}
+        <Marker position={TRUCK_DEPOT.pos} icon={depotIcon}>
+          <Popup className="eco-facility-popup">
+            <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '220px', padding: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+                <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a' }}>
+                  {TRUCK_DEPOT.name}
+                </div>
+                <span style={{
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  backgroundColor: '#0f172a',
+                  color: '#38bdf8',
+                  border: '1px solid #38bdf8'
+                }}>
+                  START DEPOT
+                </span>
+              </div>
+              <div style={{ fontSize: '11px', background: '#f8fafc', padding: '8px 10px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div>
+                  <span style={{ color: '#64748b', fontSize: '10px', fontWeight: 500, display: 'block' }}>Operational Facility</span>
+                  <strong style={{ color: '#1e293b' }}>{TRUCK_DEPOT.role}</strong>
+                </div>
+                <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '4px' }}>
+                  <span style={{ color: '#64748b', fontSize: '10px', fontWeight: 500, display: 'block' }}>GPS Coordinates</span>
+                  <code style={{ fontSize: '10px', color: '#0284c7' }}>18.5500° N, 73.8000° E</code>
+                </div>
+              </div>
+            </div>
+          </Popup>
+        </Marker>
+
+        {/* Permanent Facility 2: Municipal Recycling Plant (End) [18.4984, 73.9213] */}
+        <Marker position={RECYCLING_PLANT.pos} icon={plantIcon}>
+          <Popup className="eco-facility-popup">
+            <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '220px', padding: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+                <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a' }}>
+                  {RECYCLING_PLANT.name}
+                </div>
+                <span style={{
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  backgroundColor: '#581c87',
+                  color: '#e9d5ff',
+                  border: '1px solid #a855f7'
+                }}>
+                  END DESTINATION
+                </span>
+              </div>
+              <div style={{ fontSize: '11px', background: '#faf5ff', padding: '8px 10px', borderRadius: '10px', border: '1px solid #f3e8ff', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div>
+                  <span style={{ color: '#7e22ce', fontSize: '10px', fontWeight: 500, display: 'block' }}>Processing Facility</span>
+                  <strong style={{ color: '#3b0764' }}>{RECYCLING_PLANT.role}</strong>
+                </div>
+                <div style={{ borderTop: '1px dashed #e9d5ff', paddingTop: '4px' }}>
+                  <span style={{ color: '#7e22ce', fontSize: '10px', fontWeight: 500, display: 'block' }}>GPS Coordinates</span>
+                  <code style={{ fontSize: '10px', color: '#7e22ce' }}>18.4984° N, 73.9213° E</code>
+                </div>
+              </div>
+            </div>
+          </Popup>
+        </Marker>
 
         {/* Detailed Map Popups with Bin Name, Status, Capacity, Waste Type, and Last Pickup Date */}
         {binList.map((bin) => (
