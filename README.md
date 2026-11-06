@@ -14,8 +14,8 @@
 ---
 
 ### 🔗 Project Showcase Links
-- 🌐 **Live Vercel Demo**: [https://ecoroute-ai.vercel.app](https://ecoroute-ai.vercel.app) *(Placeholder)*
-- 🎥 **YouTube Video Pitch**: [https://youtube.com/watch?v=YOUR_VIDEO_ID](https://youtube.com/watch?v=YOUR_VIDEO_ID) *(Placeholder)*
+- 🌐 **Live Vercel Demo**: [https://ecoroute-ai-five.vercel.app](https://ecoroute-ai-five.vercel.app) 
+- 🎥 **YouTube Video Pitch**: 
 - 💻 **Source Code Repository**: [https://github.com/adityarote652/ecoroute-ai](https://github.com/adityarote652/ecoroute-ai)
 
 ---
