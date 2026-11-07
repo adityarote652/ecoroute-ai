@@ -152,7 +152,7 @@ function MapController({ center, zoom, bounds }) {
   useEffect(() => {
     map.invalidateSize();
     const t1 = setTimeout(() => map.invalidateSize(), 150);
-    const t2 = setTimeout(() => map.invalidateSize(), 500);
+    const t2 = setTimeout(() => { map.invalidateSize(); if (bounds && bounds.length >= 2) try { map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 }); } catch(e){} }, 500); const t3 = setTimeout(() => { map.invalidateSize(); }, 1200);
 
     const handleResize = () => {
       if (map) map.invalidateSize();

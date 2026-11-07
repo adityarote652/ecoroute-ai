@@ -926,13 +926,13 @@
 
       if (view === 'municipal') {
           renderDashboard();
-          if (window.mountReactMap) window.mountReactMap();
+          if (window.mountReactMap) window.mountReactMap(); if (window.mountMunicipalDashboard) window.mountMunicipalDashboard(); setTimeout(() => { if (window.mountReactMap) window.mountReactMap(); }, 150);
           if (window.muniMap) {
             setTimeout(() => window.muniMap.invalidateSize(), 50);
             setTimeout(() => window.muniMap.invalidateSize(), 200);
           }
       } else if (view === 'citizen') {
-          if (window.mountCitizenMap) window.mountCitizenMap();
+          if (window.mountCitizenMap) window.mountCitizenMap(); setTimeout(() => { if (window.mountCitizenMap) window.mountCitizenMap(); }, 150); if (window.citizenMap) { setTimeout(() => window.citizenMap.invalidateSize(), 50); setTimeout(() => window.citizenMap.invalidateSize(), 200); setTimeout(() => window.citizenMap.invalidateSize(), 600); }
           if (window.mountCitizenWallet) window.mountCitizenWallet();
       } else if (view === 'driver') {
           if (window.mountDriverDashboard) window.mountDriverDashboard();

@@ -128,6 +128,9 @@ export function MapResizer({ onReady, isLoading, isMuni = true }) {
     if (isMuni) {
       _muniMapInstance = map;
       window.muniMap = map;
+    } else {
+      _citizenMapInstance = map;
+      window.citizenMap = map;
     }
     map.invalidateSize();
     const t1 = setTimeout(() => map.invalidateSize(), 100);
@@ -670,7 +673,7 @@ export const mockHeatmapArray = mockHeatmapPoints;
 export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   // State Management: wardBins array stored in React state variable
   const [bins, setBins] = useState(wardBins);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [showRoute, setShowRoute] = useState(false);
   const [routePositions, setRoutePositions] = useState([]);
   const routePath = routePositions;
@@ -1069,7 +1072,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   ) : null;
 
   return (
-    <div className="relative w-full h-[600px] sm:h-[70vh] overflow-hidden rounded-2xl" style={{ height: height, minHeight: height }}>
+    <div className={`relative w-full ${height === '260px' ? 'h-[260px]' : 'h-[600px] sm:h-[70vh]'} overflow-hidden rounded-2xl`} style={{ height: height, minHeight: height }}>
       {/* Portal Heatmap Toggle Button next to "Generate Optimal Route" */}
       {portalTarget && heatmapToggleBtn && createPortal(heatmapToggleBtn, portalTarget)}
       {!portalTarget && allowRoute && (
@@ -1078,7 +1081,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
         </div>
       )}
       {/* Skeleton loader / "Loading Map Data..." overlay */}
-      {isLoading && (
+      {false && (
         <div 
           className="absolute inset-0 z-[1000] bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white transition-opacity duration-300 pointer-events-none"
           style={{ zIndex: 1000 }}
@@ -1107,7 +1110,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
       <MapContainer
         center={[18.5204, 73.8567]}
         zoom={11}
-        className="w-full h-[600px] sm:h-[70vh]"
+        className={`w-full ${height === '260px' ? 'h-[260px]' : 'h-[600px] sm:h-[70vh]'}`}
         style={{ height: '100%', minHeight: height, width: '100%' }}
       >
         <MapResizer onReady={onMapReady} isLoading={isLoading} isMuni={allowRoute} />
@@ -1348,12 +1351,26 @@ export function mountMap() {
   const rootEl = document.getElementById('map-body');
   if (rootEl) {
     if (!rootEl._reactRoot) {
-      const root = createRoot(rootEl);
-      root.render(<PuneMap height="600px" onMapReady={(m) => { _muniMapInstance = m; window.muniMap = m; setTimeout(() => m.invalidateSize(), 50); setTimeout(() => m.invalidateSize(), 200); setTimeout(() => m.invalidateSize(), 500); }} />);
-      rootEl._reactRoot = root;
-    } else if (_muniMapInstance) {
-      window.muniMap = _muniMapInstance;
-      setTimeout(() => _muniMapInstance.invalidateSize(), 50); setTimeout(() => _muniMapInstance.invalidateSize(), 200); setTimeout(() => _muniMapInstance.invalidateSize(), 500);
+      rootEl._reactRoot = createRoot(rootEl);
+    }
+    rootEl._reactRoot.render(
+      <PuneMap
+        height="600px"
+        allowRoute={true}
+        onMapReady={(m) => {
+          _muniMapInstance = m;
+          window.muniMap = m;
+          setTimeout(() => m.invalidateSize(), 50);
+          setTimeout(() => m.invalidateSize(), 200);
+          setTimeout(() => m.invalidateSize(), 500);
+          setTimeout(() => m.invalidateSize(), 1000);
+        }}
+      />
+    );
+    if (_muniMapInstance) {
+      setTimeout(() => _muniMapInstance.invalidateSize(), 50);
+      setTimeout(() => _muniMapInstance.invalidateSize(), 200);
+      setTimeout(() => _muniMapInstance.invalidateSize(), 500);
     }
   }
   renderPriorityListUI(wardBins);
@@ -1363,11 +1380,26 @@ export function mountCitizenMap() {
   const rootEl = document.getElementById('citizenMap');
   if (rootEl) {
     if (!rootEl._reactRoot) {
-      const root = createRoot(rootEl);
-      root.render(<PuneMap height="260px" allowRoute={false} onMapReady={(m) => { _citizenMapInstance = m; setTimeout(() => m.invalidateSize(), 50); setTimeout(() => m.invalidateSize(), 200); setTimeout(() => m.invalidateSize(), 500); }} />);
-      rootEl._reactRoot = root;
-    } else if (_citizenMapInstance) {
-      setTimeout(() => _citizenMapInstance.invalidateSize(), 50); setTimeout(() => _citizenMapInstance.invalidateSize(), 200); setTimeout(() => _citizenMapInstance.invalidateSize(), 500);
+      rootEl._reactRoot = createRoot(rootEl);
+    }
+    rootEl._reactRoot.render(
+      <PuneMap
+        height="260px"
+        allowRoute={false}
+        onMapReady={(m) => {
+          _citizenMapInstance = m;
+          window.citizenMap = m;
+          setTimeout(() => m.invalidateSize(), 50);
+          setTimeout(() => m.invalidateSize(), 200);
+          setTimeout(() => m.invalidateSize(), 500);
+          setTimeout(() => m.invalidateSize(), 1000);
+        }}
+      />
+    );
+    if (_citizenMapInstance) {
+      setTimeout(() => _citizenMapInstance.invalidateSize(), 50);
+      setTimeout(() => _citizenMapInstance.invalidateSize(), 200);
+      setTimeout(() => _citizenMapInstance.invalidateSize(), 500);
     }
   }
 }
