@@ -40,65 +40,19 @@ export function MapResizer() {
 /**
  * MunicipalDashboard Component
  * Features explicit Tailwind sizing (h-[600px] / h-[70vh]), MapResizer child,
- * and high-contrast municipal fleet routing display.
+ * and high-contrast municipal fleet routing display with ward bins, TSP route, and heatmap.
  */
-export function MunicipalDashboard({ height = '600px', allowRoute = true, onMapReady }) {
+export function MunicipalDashboard({ height = '600px', allowRoute = true, onMapReady, ...props }) {
   return (
-    <div className="w-full flex flex-col space-y-4">
-      {/* Explicitly Sized Immediate Parent Wrapper */}
-      <div className="w-full h-[600px] sm:h-[70vh] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl relative bg-slate-900">
-        <MapContainer
-          center={[18.5204, 73.8567]}
-          zoom={11}
-          className="w-full h-[600px] sm:h-[70vh]"
-          style={{ width: '100%', height: '100%', minHeight: '600px' }}
-        >
-          {/* Custom MapResizer child */}
-          <MapResizer />
-
-          {/* OpenStreetMap Tile Layer */}
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
-            maxZoom={19}
-          />
-
-          {/* Start & End Facilities */}
-          <Marker position={TRUCK_DEPOT.pos} icon={depotIcon}>
-            <Popup>
-              <div className="p-1">
-                <strong>{TRUCK_DEPOT.name}</strong>
-                <p className="text-xs text-slate-500">{TRUCK_DEPOT.role}</p>
-              </div>
-            </Popup>
-          </Marker>
-
-          <Marker position={RECYCLING_PLANT.pos} icon={plantIcon}>
-            <Popup>
-              <div className="p-1">
-                <strong>{RECYCLING_PLANT.name}</strong>
-                <p className="text-xs text-slate-500">{RECYCLING_PLANT.role}</p>
-              </div>
-            </Popup>
-          </Marker>
-        </MapContainer>
-      </div>
+    <div className="w-full h-[600px] sm:h-[70vh] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl relative bg-slate-900">
+      <PuneMap height="100%" allowRoute={allowRoute} onMapReady={onMapReady} {...props} />
     </div>
   );
 }
 
 // Global Mount Helper
 export function mountMunicipalDashboard() {
-  const rootEl = document.getElementById('map-body') || document.getElementById('municipalDashboardRoot');
-  if (rootEl) {
-    if (!rootEl._reactRoot) {
-      const root = createRoot(rootEl);
-      root.render(<MunicipalDashboard />);
-      rootEl._reactRoot = root;
-    } else {
-      mountMap();
-    }
-  }
+  mountMap();
 }
 
 if (typeof window !== 'undefined') {

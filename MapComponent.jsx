@@ -1349,11 +1349,11 @@ export function mountMap() {
   if (rootEl) {
     if (!rootEl._reactRoot) {
       const root = createRoot(rootEl);
-      root.render(<PuneMap height="600px" onMapReady={(m) => { _muniMapInstance = m; window.muniMap = m; }} />);
+      root.render(<PuneMap height="600px" onMapReady={(m) => { _muniMapInstance = m; window.muniMap = m; setTimeout(() => m.invalidateSize(), 50); setTimeout(() => m.invalidateSize(), 200); setTimeout(() => m.invalidateSize(), 500); }} />);
       rootEl._reactRoot = root;
     } else if (_muniMapInstance) {
       window.muniMap = _muniMapInstance;
-      setTimeout(() => _muniMapInstance.invalidateSize(), 50);
+      setTimeout(() => _muniMapInstance.invalidateSize(), 50); setTimeout(() => _muniMapInstance.invalidateSize(), 200); setTimeout(() => _muniMapInstance.invalidateSize(), 500);
     }
   }
   renderPriorityListUI(wardBins);
@@ -1364,10 +1364,10 @@ export function mountCitizenMap() {
   if (rootEl) {
     if (!rootEl._reactRoot) {
       const root = createRoot(rootEl);
-      root.render(<PuneMap height="260px" allowRoute={false} onMapReady={(m) => { _citizenMapInstance = m; }} />);
+      root.render(<PuneMap height="260px" allowRoute={false} onMapReady={(m) => { _citizenMapInstance = m; setTimeout(() => m.invalidateSize(), 50); setTimeout(() => m.invalidateSize(), 200); setTimeout(() => m.invalidateSize(), 500); }} />);
       rootEl._reactRoot = root;
     } else if (_citizenMapInstance) {
-      setTimeout(() => _citizenMapInstance.invalidateSize(), 50);
+      setTimeout(() => _citizenMapInstance.invalidateSize(), 50); setTimeout(() => _citizenMapInstance.invalidateSize(), 200); setTimeout(() => _citizenMapInstance.invalidateSize(), 500);
     }
   }
 }

@@ -1544,7 +1544,7 @@
         if (window.mountReactMap) window.mountReactMap();
         if (window.mountMunicipalComplaints) window.mountMunicipalComplaints();
         buildMap();
-        if (_map) _map.invalidateSize();
+        if (_map) _map.invalidateSize(); if (window.muniMap) window.muniMap.invalidateSize();
       }, 80);
     }
     if (view === 'citizen') {
