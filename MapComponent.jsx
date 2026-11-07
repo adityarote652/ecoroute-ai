@@ -1,8 +1,9 @@
+import 'leaflet/dist/leaflet.css';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, Circle, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+
 import L from 'leaflet';
 import { fetchBinsFromDB } from './firebase.js';
 import { appStore } from './AppContext.jsx';
@@ -113,8 +114,15 @@ let _muniMapInstance = null;
 let _citizenMapInstance = null;
 
 // Ensure leaflet recalculates dimensions immediately to avoid gray tiles
-function MapResizer({ onReady, isLoading, isMuni = true }) {
+export function MapResizer({ onReady, isLoading, isMuni = true }) {
   const map = useMap();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [map]);
   useEffect(() => {
     if (onReady) onReady(map);
     if (isMuni) {
@@ -1061,7 +1069,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   ) : null;
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: height, minHeight: height }}>
+    <div className="relative w-full h-[600px] sm:h-[70vh] overflow-hidden rounded-2xl" style={{ height: height, minHeight: height }}>
       {/* Portal Heatmap Toggle Button next to "Generate Optimal Route" */}
       {portalTarget && heatmapToggleBtn && createPortal(heatmapToggleBtn, portalTarget)}
       {!portalTarget && allowRoute && (
@@ -1099,6 +1107,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
       <MapContainer
         center={[18.5204, 73.8567]}
         zoom={11}
+        className="w-full h-[600px] sm:h-[70vh]"
         style={{ height: '100%', minHeight: height, width: '100%' }}
       >
         <MapResizer onReady={onMapReady} isLoading={isLoading} isMuni={allowRoute} />
@@ -1340,7 +1349,7 @@ export function mountMap() {
   if (rootEl) {
     if (!rootEl._reactRoot) {
       const root = createRoot(rootEl);
-      root.render(<PuneMap height="400px" onMapReady={(m) => { _muniMapInstance = m; window.muniMap = m; }} />);
+      root.render(<PuneMap height="600px" onMapReady={(m) => { _muniMapInstance = m; window.muniMap = m; }} />);
       rootEl._reactRoot = root;
     } else if (_muniMapInstance) {
       window.muniMap = _muniMapInstance;

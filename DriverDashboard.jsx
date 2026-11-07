@@ -1,7 +1,7 @@
+import 'leaflet/dist/leaflet.css';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useApp, AppProvider, appStore } from './AppContext.jsx';
 import { db, updateBinStatusInDB } from './firebase.js';
@@ -133,6 +133,20 @@ function createPlantMarkerIcon() {
     iconAnchor: [19, 19],
     popupAnchor: [0, -19],
   });
+}
+
+// ── Map Resizer Fix Component ───────────────────────────────────────────────
+export function MapResizer() {
+  const map = useMap();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [map]);
+
+  return null;
 }
 
 // ── Map Viewport Adjuster ───────────────────────────────────────────────────
@@ -520,7 +534,7 @@ export function DriverDashboard() {
 
       {/* ── 2. LARGE TABLET LEAFLET MAP CONTAINER ──────────────────────────────── */}
       <div className="px-4 sm:px-6 flex-1 flex flex-col min-h-[440px] sm:min-h-[500px] relative mt-3">
-        <div className="w-full flex-1 rounded-3xl overflow-hidden border-2 border-slate-800 shadow-2xl relative bg-slate-900">
+        <div className="w-full h-[600px] sm:h-[70vh] rounded-3xl overflow-hidden border-2 border-slate-800 shadow-2xl relative bg-slate-900">
           
           {/* Dispatched Route Status Overlay */}
           <div className="absolute top-4 left-4 z-[500] px-3.5 py-2 rounded-xl bg-slate-900/90 text-sky-400 border border-sky-500/40 text-xs font-bold flex items-center gap-2 shadow-lg backdrop-blur-md">
@@ -547,16 +561,17 @@ export function DriverDashboard() {
           <MapContainer
             center={truckPos}
             zoom={15}
-            style={{ width: '100%', height: '100%', minHeight: '440px' }}
+            className="w-full h-[600px] sm:h-[70vh]"
+            style={{ width: '100%', height: '600px', minHeight: '600px' }}
             zoomControl={false}
             ref={mapRef}
           >
+            <MapResizer />
+            <MapController bounds={mapBounds} />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-
-            <MapController bounds={mapBounds} />
 
             {/* Truck Live Location Marker */}
             <Marker position={truckPos} icon={createTruckMarkerIcon()}>
