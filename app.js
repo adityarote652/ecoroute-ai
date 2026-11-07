@@ -971,14 +971,34 @@
     if (isDriverRoute) {
       switchViewInternal('driver');
     } else {
-      switchViewInternal('landing');
+      const hash = (window.location.hash || '').toLowerCase();
+      const path = (window.location.pathname || '').toLowerCase();
+      if (path.includes('municipal') || hash.includes('municipal')) {
+        switchViewInternal('municipal');
+      } else if (path.includes('citizen') || hash.includes('citizen')) {
+        switchViewInternal('citizen');
+      } else if (path.includes('admin') || hash.includes('admin')) {
+        switchViewInternal('admin');
+      } else {
+        switchViewInternal('landing');
+      }
     }
 
     window.addEventListener('popstate', () => {
       if (window.location.pathname === '/driver' || window.location.hash.includes('driver')) {
         switchViewInternal('driver');
       } else {
+        const hash = (window.location.hash || '').toLowerCase();
+      const path = (window.location.pathname || '').toLowerCase();
+      if (path.includes('municipal') || hash.includes('municipal')) {
+        switchViewInternal('municipal');
+      } else if (path.includes('citizen') || hash.includes('citizen')) {
+        switchViewInternal('citizen');
+      } else if (path.includes('admin') || hash.includes('admin')) {
+        switchViewInternal('admin');
+      } else {
         switchViewInternal('landing');
+      }
       }
     });
 
