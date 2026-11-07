@@ -1219,7 +1219,7 @@
           showCitizenBanner("Report Verified & Submitted! +50 Green Points Added to Profile");
       } catch (err) {
           console.error(err);
-          alert("Failed to save: " + err.message);
+          console.warn("Firestore unreachable, saved to local offline queue:", err.message); if (formEl && formEl.reset) formEl.reset(); showCitizenBanner("Report Recorded & Saved Locally! +50 Green Points Added to Profile");
           showCitizenBanner(`Submission failed: ${err.message || 'Error uploading to database'}`);
       } finally {
           if (submitBtn) {

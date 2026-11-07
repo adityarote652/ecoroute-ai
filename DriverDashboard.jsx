@@ -7,10 +7,10 @@ import { useApp, AppProvider, appStore } from './AppContext.jsx';
 import { db, updateBinStatusInDB } from './firebase.js';
 import { doc, setDoc } from 'firebase/firestore';
 
-// ── In-Cabin Web Audio Synthesizer Chimes ───────────────────────────────────
+let _driverAudioCtx = null; function getDriverAudioCtx() { try { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; if (!_driverAudioCtx) _driverAudioCtx = new C(); if (_driverAudioCtx.state === 'suspended') _driverAudioCtx.resume().catch(() => {}); return _driverAudioCtx; } catch(e) { return null; } }
 function playCollectChime() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = getDriverAudioCtx(); if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -27,14 +27,12 @@ function playCollectChime() {
   } catch (e) {
     // Audio context may be restricted before user gesture
   }
-  if (typeof navigator !== 'undefined' && navigator.vibrate) {
-    navigator.vibrate([100, 40, 100]);
-  }
+  try { if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate([100, 40, 100]); } catch(e) {}
 }
 
 function playCompletionFanfare() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = getDriverAudioCtx(); if (!ctx) return;
     const now = ctx.currentTime;
     [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
       const osc = ctx.createOscillator();
@@ -50,9 +48,7 @@ function playCompletionFanfare() {
       osc.stop(start + 0.35);
     });
   } catch (e) {}
-  if (typeof navigator !== 'undefined' && navigator.vibrate) {
-    navigator.vibrate([150, 60, 150, 60, 250]);
-  }
+  try { if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate([150, 60, 150, 60, 250]); } catch(e) {}
 }
 
 // ── Custom Tablet-Optimized High-Contrast Leaflet Markers ───────────────────

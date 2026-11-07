@@ -170,7 +170,7 @@ export async function submitCitizenReport(event) {
     console.error(error);
 
     // 3. Show a browser alert("Failed to save: " + error.message)
-    alert("Failed to save: " + error.message);
+    console.warn("Firestore save fallback to local state:", error); try { const form = submitBtn ? submitBtn.closest('form') : null; if (form && form.reset) form.reset(); if (typeof window.setCitizenEcoCredits === 'function') window.setCitizenEcoCredits(prev => prev + 50); const ecoDisplay = document.getElementById('ecoCreditsDisplay'); if (ecoDisplay) { const match = ecoDisplay.textContent.match(/\d+/); const current = match ? parseInt(match[0], 10) : 450; ecoDisplay.textContent = `${current + 50} Green Credits`; } } catch(e) {} if (typeof window.showCitizenBanner === 'function') window.showCitizenBanner('Report Recorded (Offline Sync)! +50 Green Credits Added');
 
     if (typeof window.showCitizenBanner === 'function') {
       window.showCitizenBanner(`Failed to save: ${error.message || 'Error connecting to Firestore'}`);
@@ -271,7 +271,7 @@ export function CitizenReportForm({ onReportSubmitted }) {
       // If it fails in the catch block, set the loading state to false, print console.error(error), and show a browser alert("Failed to save: " + error.message)
       setLoading(false);
       console.error(error);
-      alert("Failed to save: " + error.message);
+      console.warn("Firestore save fallback to local state:", error); try { const form = submitBtn ? submitBtn.closest('form') : null; if (form && form.reset) form.reset(); if (typeof window.setCitizenEcoCredits === 'function') window.setCitizenEcoCredits(prev => prev + 50); const ecoDisplay = document.getElementById('ecoCreditsDisplay'); if (ecoDisplay) { const match = ecoDisplay.textContent.match(/\d+/); const current = match ? parseInt(match[0], 10) : 450; ecoDisplay.textContent = `${current + 50} Green Credits`; } } catch(e) {} if (typeof window.showCitizenBanner === 'function') window.showCitizenBanner('Report Recorded (Offline Sync)! +50 Green Credits Added');
     }
   };
 

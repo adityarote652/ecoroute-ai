@@ -174,7 +174,7 @@ export async function fetchOSRMTrip(waypoints = []) {
   const url = `https://router.project-osrm.org/trip/v1/driving/${coordsStr}?roundtrip=false&source=first&destination=last&overview=full&geometries=geojson`;
 
   try {
-    const response = await fetch(url);
+    const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 5000); const response = await fetch(url, { signal: controller.signal }); clearTimeout(timeoutId);
     if (!response.ok) throw new Error(`OSRM Trip API responded with status ${response.status}`);
     const data = await response.json();
     if (data.code === 'Ok' && data.trips && data.trips[0]?.geometry?.coordinates) {
