@@ -128,9 +128,10 @@ export function MapResizer({ onReady, isLoading, isMuni = true }) {
     if (isMuni) {
       _muniMapInstance = map;
       window.muniMap = map;
+      window.muniLeafletMap = map;
     } else {
       _citizenMapInstance = map;
-      window.citizenMap = map;
+      window.citizenLeafletMap = map;
     }
     map.invalidateSize();
     const t1 = setTimeout(() => map.invalidateSize(), 100);
@@ -1360,6 +1361,7 @@ export function mountMap() {
         onMapReady={(m) => {
           _muniMapInstance = m;
           window.muniMap = m;
+          window.muniLeafletMap = m;
           setTimeout(() => m.invalidateSize(), 50);
           setTimeout(() => m.invalidateSize(), 200);
           setTimeout(() => m.invalidateSize(), 500);
@@ -1389,6 +1391,7 @@ export function mountCitizenMap() {
         onMapReady={(m) => {
           _citizenMapInstance = m;
           window.citizenMap = m;
+          window.citizenLeafletMap = m;
           setTimeout(() => m.invalidateSize(), 50);
           setTimeout(() => m.invalidateSize(), 200);
           setTimeout(() => m.invalidateSize(), 500);

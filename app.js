@@ -926,13 +926,27 @@
 
       if (view === 'municipal') {
           renderDashboard();
-          if (window.mountReactMap) window.mountReactMap(); if (window.mountMunicipalDashboard) window.mountMunicipalDashboard(); setTimeout(() => { if (window.mountReactMap) window.mountReactMap(); }, 150);
-          if (window.muniMap) {
-            setTimeout(() => window.muniMap.invalidateSize(), 50);
-            setTimeout(() => window.muniMap.invalidateSize(), 200);
-          }
+          if (window.mountReactMap) window.mountReactMap();
+          setTimeout(() => { if (window.mountReactMap) window.mountReactMap(); }, 150);
+          setTimeout(() => {
+            if (window.muniLeafletMap && typeof window.muniLeafletMap.invalidateSize === 'function') window.muniLeafletMap.invalidateSize();
+            else if (window.muniMap && typeof window.muniMap.invalidateSize === 'function') window.muniMap.invalidateSize();
+          }, 80);
+          setTimeout(() => {
+            if (window.muniLeafletMap && typeof window.muniLeafletMap.invalidateSize === 'function') window.muniLeafletMap.invalidateSize();
+            else if (window.muniMap && typeof window.muniMap.invalidateSize === 'function') window.muniMap.invalidateSize();
+          }, 300);
       } else if (view === 'citizen') {
-          if (window.mountCitizenMap) window.mountCitizenMap(); setTimeout(() => { if (window.mountCitizenMap) window.mountCitizenMap(); }, 150); if (window.citizenMap) { setTimeout(() => window.citizenMap.invalidateSize(), 50); setTimeout(() => window.citizenMap.invalidateSize(), 200); setTimeout(() => window.citizenMap.invalidateSize(), 600); }
+          if (window.mountCitizenMap) window.mountCitizenMap();
+          setTimeout(() => { if (window.mountCitizenMap) window.mountCitizenMap(); }, 150);
+          setTimeout(() => {
+            if (window.citizenLeafletMap && typeof window.citizenLeafletMap.invalidateSize === 'function') window.citizenLeafletMap.invalidateSize();
+            else if (window._citizenMapInstance && typeof window._citizenMapInstance.invalidateSize === 'function') window._citizenMapInstance.invalidateSize();
+          }, 80);
+          setTimeout(() => {
+            if (window.citizenLeafletMap && typeof window.citizenLeafletMap.invalidateSize === 'function') window.citizenLeafletMap.invalidateSize();
+            else if (window._citizenMapInstance && typeof window._citizenMapInstance.invalidateSize === 'function') window._citizenMapInstance.invalidateSize();
+          }, 300);
           if (window.mountCitizenWallet) window.mountCitizenWallet();
       } else if (view === 'driver') {
           if (window.mountDriverDashboard) window.mountDriverDashboard();
@@ -1544,7 +1558,7 @@
         if (window.mountReactMap) window.mountReactMap();
         if (window.mountMunicipalComplaints) window.mountMunicipalComplaints();
         buildMap();
-        if (_map) _map.invalidateSize(); if (window.muniMap) window.muniMap.invalidateSize();
+        if (_map && typeof _map.invalidateSize === 'function') _map.invalidateSize(); if (window.muniLeafletMap && typeof window.muniLeafletMap.invalidateSize === 'function') window.muniLeafletMap.invalidateSize();
       }, 80);
     }
     if (view === 'citizen') {
