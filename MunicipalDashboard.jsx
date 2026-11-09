@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { fetchBinsFromDB } from './firebase.js';
 import { appStore } from './AppContext.jsx';
@@ -24,8 +24,26 @@ import {
   mountMap
 } from './MapComponent.jsx';
 
-// Reference holder (zero invalidateSize calls to prevent React concurrent reconciliation crashes)
+// Map reference and visibility observer
 export function MapResizer({ onReady }) {
+  const map = useMap();
+  useEffect(() => {
+    if (onReady) onReady(map);
+    window.muniMap = map;
+    window.muniLeafletMap = map;
+    const container = map.getContainer();
+    if (container && typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+            map.invalidateSize();
+          }
+        }
+      });
+      ro.observe(container);
+      return () => ro.disconnect();
+    }
+  }, [map, onReady]);
   return null;
 }
 
@@ -87,10 +105,11 @@ export function MunicipalDashboard({ height = '600px', allowRoute = true, onMapR
         }
 
         if (isMounted) {
-          if (fetchedData && fetchedData.length >= wardBins.length) {
-            setBins(fetchedData);
-          } else {
-            setBins(wardBins);
+          const finalBins = (fetchedData && fetchedData.length >= wardBins.length) ? fetchedData : wardBins;
+          setBins(finalBins);
+          if (typeof window !== 'undefined') {
+            window.wardBins = finalBins;
+            renderPriorityListUI(finalBins);
           }
         }
       } catch (err) {
@@ -109,26 +128,34 @@ export function MunicipalDashboard({ height = '600px', allowRoute = true, onMapR
 
   // Compute reactive bin list with status labels, icons, fill text, and capacity/waste details
   const binList = (bins && bins.length ? bins : wardBins).map((b) => {
-    const isCollected = b.collected === true || (b.status && b.status.toLowerCase().includes('normal') && (b.fillPct === 0 || b.fillPct < 50));
+    const fallbackDef = wardBins.find(wb => String(wb.id) === String(b.id) || String(wb.code) === String(b.code)) || {};
+    const pos = (b.pos && Array.isArray(b.pos) && b.pos.length === 2)
+      ? b.pos
+      : (b.lat && b.lng ? [b.lat, b.lng] : fallbackDef.pos);
+    const isCollected = b.collected === true;
     const fillPct = isCollected ? 0 : (typeof b.fillPct === 'number'
       ? b.fillPct
-      : (typeof b.fillPercent === 'number' ? b.fillPercent : (b.baseFill || 60)));
+      : (typeof b.fillPercent === 'number' ? b.fillPercent : (fallbackDef.fillPct || fallbackDef.baseFill || 60)));
     const isCritical = !isCollected && fillPct >= 80;
     const isWarning = !isCollected && fillPct >= 50 && fillPct < 80;
     const label = isCollected ? 'Normal' : (isCritical ? 'Critical' : isWarning ? 'Warning' : 'Normal');
     const icon = isCollected ? greenIcon : (isCritical ? redIcon : isWarning ? orangeIcon : greenIcon);
     const fill = `${fillPct}% (${label})`;
     return {
+      ...fallbackDef,
       ...b,
+      pos,
+      lat: pos ? pos[0] : b.lat,
+      lng: pos ? pos[1] : b.lng,
       fillPct,
       fillPercent: fillPct,
       status: label,
       label,
       icon,
       fill,
-      capacity: b.capacity || (b.capacityL ? `${b.capacityL}L` : '1000L'),
-      wasteType: b.wasteType || 'Organic',
-      lastPickup: b.lastPickup || 'Today, 06:30 AM'
+      capacity: b.capacity || fallbackDef.capacity || (b.capacityL ? `${b.capacityL}L` : '1000L'),
+      wasteType: b.wasteType || fallbackDef.wasteType || 'Organic',
+      lastPickup: b.lastPickup || fallbackDef.lastPickup || 'Today, 06:30 AM'
     };
   });
 
@@ -258,6 +285,8 @@ export function MunicipalDashboard({ height = '600px', allowRoute = true, onMapR
           className={`w-full ${height === '260px' ? 'h-[260px]' : 'h-[600px] sm:h-[70vh]'}`}
           style={{ height: '100%', minHeight: height, width: '100%' }}
         >
+          <MapResizer onReady={onMapReady} />
+
           {/* Free OpenStreetMap tiles */}
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

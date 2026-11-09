@@ -112,7 +112,7 @@ export const plantIcon = makeFacilityIcon('#7e22ce', '#e9d5ff', 'fa-solid fa-rec
 let _muniMapInstance = null;
 let _citizenMapInstance = null;
 
-// Map reference binder (no invalidateSize calls to prevent React reconciliation crashes)
+// Map reference binder with automatic viewport visibility recalculation
 export function MapResizer({ onReady, isMuni = true }) {
   const map = useMap();
 
@@ -124,7 +124,21 @@ export function MapResizer({ onReady, isMuni = true }) {
       window.muniLeafletMap = map;
     } else {
       _citizenMapInstance = map;
+      window.citizenMap = map;
       window.citizenLeafletMap = map;
+    }
+
+    const container = map.getContainer();
+    if (container && typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+            map.invalidateSize();
+          }
+        }
+      });
+      ro.observe(container);
+      return () => ro.disconnect();
     }
   }, [map, onReady, isMuni]);
 
@@ -813,10 +827,11 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
         }
 
         if (isMounted) {
-          if (fetchedData && fetchedData.length >= wardBins.length) {
-            setBins(fetchedData);
-          } else {
-            setBins(wardBins);
+          const finalBins = (fetchedData && fetchedData.length >= wardBins.length) ? fetchedData : wardBins;
+          setBins(finalBins);
+          if (typeof window !== 'undefined') {
+            window.wardBins = finalBins;
+            renderPriorityListUI(finalBins);
           }
         }
       } catch (err) {
@@ -835,26 +850,34 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
 
   // Compute reactive bin list with status labels, icons, fill text, and capacity/waste details
   const binList = (bins && bins.length ? bins : wardBins).map((b) => {
-    const isCollected = b.collected === true || (b.status && b.status.toLowerCase().includes('normal') && (b.fillPct === 0 || b.fillPct < 50));
+    const fallbackDef = wardBins.find(wb => String(wb.id) === String(b.id) || String(wb.code) === String(b.code)) || {};
+    const pos = (b.pos && Array.isArray(b.pos) && b.pos.length === 2)
+      ? b.pos
+      : (b.lat && b.lng ? [b.lat, b.lng] : fallbackDef.pos);
+    const isCollected = b.collected === true;
     const fillPct = isCollected ? 0 : (typeof b.fillPct === 'number'
       ? b.fillPct
-      : (typeof b.fillPercent === 'number' ? b.fillPercent : (b.baseFill || 60)));
+      : (typeof b.fillPercent === 'number' ? b.fillPercent : (fallbackDef.fillPct || fallbackDef.baseFill || 60)));
     const isCritical = !isCollected && fillPct >= 80;
     const isWarning = !isCollected && fillPct >= 50 && fillPct < 80;
     const label = isCollected ? 'Normal' : (isCritical ? 'Critical' : isWarning ? 'Warning' : 'Normal');
     const icon = isCollected ? greenIcon : (isCritical ? redIcon : isWarning ? orangeIcon : greenIcon);
     const fill = `${fillPct}% (${label})`;
     return {
+      ...fallbackDef,
       ...b,
+      pos,
+      lat: pos ? pos[0] : b.lat,
+      lng: pos ? pos[1] : b.lng,
       fillPct,
       fillPercent: fillPct,
       status: label,
       label,
       icon,
       fill,
-      capacity: b.capacity || (b.capacityL ? `${b.capacityL}L` : '1000L'),
-      wasteType: b.wasteType || 'Organic',
-      lastPickup: b.lastPickup || 'Today, 06:30 AM'
+      capacity: b.capacity || fallbackDef.capacity || (b.capacityL ? `${b.capacityL}L` : '1000L'),
+      wasteType: b.wasteType || fallbackDef.wasteType || 'Organic',
+      lastPickup: b.lastPickup || fallbackDef.lastPickup || 'Today, 06:30 AM'
     };
   });
 
@@ -1322,9 +1345,15 @@ export function mountCitizenMap() {
           _citizenMapInstance = m;
           window.citizenMap = m;
           window.citizenLeafletMap = m;
+          if (rootEl.clientWidth > 0 && typeof m.invalidateSize === 'function') {
+            m.invalidateSize();
+          }
         }}
       />
     );
+    if (window.citizenLeafletMap && typeof window.citizenLeafletMap.invalidateSize === 'function') {
+      window.citizenLeafletMap.invalidateSize();
+    }
   }
 }
 

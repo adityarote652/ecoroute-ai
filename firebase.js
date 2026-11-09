@@ -195,6 +195,21 @@ export async function uploadReportToDB(reportData = {}) {
 // Backward-compatible alias
 export const submitReportToBackend = uploadReportToDB;
 
+// ── Canonical Master Bins Dataset (Pune Ward 12 / PCMC) ──────────────────────
+export const DEFAULT_PUNE_BINS = [
+  // 5 Original Map Bins
+  { id: '1',   code: 'B01', name: 'Pune City Center',       pos: [18.5204, 73.8567], lat: 18.5204, lng: 73.8567, fillPct: 88, baseFill: 88, status: 'Critical', urgency: 'high', capacity: '1000L', capacityL: 1000, wasteType: 'Organic', areaType: 'Commercial', lastPickup: 'Today, 06:30 AM', priorityScore: 92, collected: false },
+  { id: '2',   code: 'B02', name: 'Karvenagar / Cummins',    pos: [18.4893, 73.8202], lat: 18.4893, lng: 73.8202, fillPct: 62, baseFill: 62, status: 'Warning',  urgency: 'medium', capacity: '750L',  capacityL: 750,  wasteType: 'Mixed',   areaType: 'Residential', lastPickup: 'Yesterday, 05:00 PM', priorityScore: 68, collected: false },
+  { id: '3',   code: 'B03', name: 'Hinjewadi IT Park',       pos: [18.5913, 73.7389], lat: 18.5913, lng: 73.7389, fillPct: 35, baseFill: 35, status: 'Normal',   urgency: 'low',    capacity: '1500L', capacityL: 1500, wasteType: 'Recyclable', areaType: 'Commercial', lastPickup: 'Today, 07:15 AM', priorityScore: 38, collected: false },
+  { id: '4',   code: 'B04', name: 'Hadapsar Terminal',       pos: [18.4966, 73.9416], lat: 18.4966, lng: 73.9416, fillPct: 92, baseFill: 92, status: 'Critical', urgency: 'high', capacity: '1500L', capacityL: 1500, wasteType: 'Mixed',   areaType: 'Industrial', lastPickup: 'Yesterday, 04:30 PM', priorityScore: 95, collected: false },
+  { id: '5',   code: 'B05', name: 'Kothrud Stand',           pos: [18.5074, 73.8151], lat: 18.5074, lng: 73.8151, fillPct: 68, baseFill: 68, status: 'Warning',  urgency: 'medium', capacity: '800L',  capacityL: 800,  wasteType: 'Organic', areaType: 'Transit',    lastPickup: '2 days ago', priorityScore: 72, collected: false },
+  // 4 Missing Bins with Accurate Pune Coordinates
+  { id: 'B06', code: 'B06', name: 'FC Road Night Zone',     pos: [18.5262, 73.8441], lat: 18.5262, lng: 73.8441, fillPct: 97, baseFill: 97, status: 'Critical', urgency: 'high', capacity: '1000L', capacityL: 1000, wasteType: 'Organic', areaType: 'Commercial', lastPickup: 'Yesterday, 10:00 PM', priorityScore: 98, collected: false },
+  { id: 'B07', code: 'B07', name: 'Prabhat Road Colony',    pos: [18.5135, 73.8315], lat: 18.5135, lng: 73.8315, fillPct: 86, baseFill: 86, status: 'Critical', urgency: 'high', capacity: '1200L', capacityL: 1200, wasteType: 'Organic', areaType: 'Residential', lastPickup: 'Yesterday, 08:30 PM', priorityScore: 89, collected: false },
+  { id: 'B09', code: 'B09', name: 'Westend Mall',           pos: [18.5623, 73.8078], lat: 18.5623, lng: 73.8078, fillPct: 91, baseFill: 91, status: 'Critical', urgency: 'high', capacity: '1500L', capacityL: 1500, wasteType: 'Dry',     areaType: 'Commercial', lastPickup: 'Yesterday, 06:15 PM', priorityScore: 93, collected: false },
+  { id: 'B12', code: 'B12', name: 'Pune University Road',   pos: [18.5367, 73.8242], lat: 18.5367, lng: 73.8242, fillPct: 84, baseFill: 84, status: 'Critical', urgency: 'high', capacity: '1000L', capacityL: 1000, wasteType: 'Mixed',   areaType: 'Commercial', lastPickup: 'Yesterday, 09:00 PM', priorityScore: 88, collected: false },
+];
+
 // Asynchronously fetch bin coordinates and fill-levels from DB (with loading delay simulation)
 export async function fetchBinsFromDB() {
   try {
@@ -204,33 +219,77 @@ export async function fetchBinsFromDB() {
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
       const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
       if (snapshot && !snapshot.empty) {
-        const binsList = [];
+        const rawDocs = [];
         snapshot.forEach(docSnap => {
-          binsList.push({ id: docSnap.id, ...docSnap.data() });
+          rawDocs.push({ id: docSnap.id, ...docSnap.data() });
         });
-        return binsList;
+
+        // Deeply merge with DEFAULT_PUNE_BINS so coordinates, names, and metadata are ALWAYS preserved
+        const mergedList = DEFAULT_PUNE_BINS.map(defaultBin => {
+          const matched = rawDocs.find(d => 
+            String(d.id).toUpperCase() === String(defaultBin.id).toUpperCase() ||
+            String(d.id).toUpperCase() === String(defaultBin.code).toUpperCase() ||
+            String(d.code).toUpperCase() === String(defaultBin.code).toUpperCase()
+          );
+          if (!matched) return { ...defaultBin };
+
+          const pos = (matched.pos && Array.isArray(matched.pos) && matched.pos.length === 2)
+            ? matched.pos
+            : (matched.lat && matched.lng ? [matched.lat, matched.lng] : defaultBin.pos);
+
+          return {
+            ...defaultBin,
+            ...matched,
+            pos,
+            lat: pos[0],
+            lng: pos[1],
+            name: matched.name || defaultBin.name,
+            capacity: matched.capacity || defaultBin.capacity,
+            wasteType: matched.wasteType || defaultBin.wasteType,
+            areaType: matched.areaType || defaultBin.areaType,
+          };
+        });
+
+        // Include any custom bins created via Admin Hub
+        rawDocs.forEach(d => {
+          const already = mergedList.some(m => String(m.id).toUpperCase() === String(d.id).toUpperCase() || String(m.code).toUpperCase() === String(d.code).toUpperCase());
+          if (!already && (d.pos || (d.lat && d.lng))) {
+            const pos = d.pos || [d.lat, d.lng];
+            mergedList.push({
+              ...d,
+              pos,
+              lat: pos[0],
+              lng: pos[1]
+            });
+          }
+        });
+
+        // Ensure active critical bins are present for route optimization and priority list
+        const hasCritical = mergedList.some(b => !b.collected && ((b.fillPct || b.fillPercent || 0) >= 80 || b.status === 'Critical'));
+        if (!hasCritical) {
+          // If all bins were marked collected in previous runs, restore default critical baseline
+          mergedList.forEach((b, idx) => {
+            const def = DEFAULT_PUNE_BINS[idx];
+            if (def && def.fillPct >= 80) {
+              b.fillPct = def.fillPct;
+              b.fillPercent = def.fillPct;
+              b.status = def.status;
+              b.collected = false;
+            }
+          });
+        }
+
+        return mergedList;
       }
     }
   } catch (e) {
     // fallback to simulated DB fetch
   }
 
-  // 1.2-second async database fetch simulation with rich bin metadata
+  // Fallback simulated fetch with master bins
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve([
-        // 5 Original Map Bins
-        { id: '1',   code: 'B01', name: 'Pune City Center',       pos: [18.5204, 73.8567], lat: 18.5204, lng: 73.8567, fillPct: 88, baseFill: 88, status: 'Critical', urgency: 'high', capacity: '1000L', capacityL: 1000, wasteType: 'Organic', areaType: 'Commercial', lastPickup: 'Today, 06:30 AM', priorityScore: 92 },
-        { id: '2',   code: 'B02', name: 'Karvenagar / Cummins',    pos: [18.4893, 73.8202], lat: 18.4893, lng: 73.8202, fillPct: 62, baseFill: 62, status: 'Warning',  urgency: 'medium', capacity: '750L',  capacityL: 750,  wasteType: 'Mixed',   areaType: 'Residential', lastPickup: 'Yesterday, 05:00 PM', priorityScore: 68 },
-        { id: '3',   code: 'B03', name: 'Hinjewadi IT Park',       pos: [18.5913, 73.7389], lat: 18.5913, lng: 73.7389, fillPct: 35, baseFill: 35, status: 'Normal',   urgency: 'low',    capacity: '1500L', capacityL: 1500, wasteType: 'Recyclable', areaType: 'Commercial', lastPickup: 'Today, 07:15 AM', priorityScore: 38 },
-        { id: '4',   code: 'B04', name: 'Hadapsar Terminal',       pos: [18.4966, 73.9416], lat: 18.4966, lng: 73.9416, fillPct: 92, baseFill: 92, status: 'Critical', urgency: 'high', capacity: '1500L', capacityL: 1500, wasteType: 'Mixed',   areaType: 'Industrial', lastPickup: 'Yesterday, 04:30 PM', priorityScore: 95 },
-        { id: '5',   code: 'B05', name: 'Kothrud Stand',           pos: [18.5074, 73.8151], lat: 18.5074, lng: 73.8151, fillPct: 68, baseFill: 68, status: 'Warning',  urgency: 'medium', capacity: '800L',  capacityL: 800,  wasteType: 'Organic', areaType: 'Transit',    lastPickup: '2 days ago', priorityScore: 72 },
-        // 4 Missing Bins with Accurate Pune Coordinates
-        { id: 'B06', code: 'B06', name: 'FC Road Night Zone',     pos: [18.5262, 73.8441], lat: 18.5262, lng: 73.8441, fillPct: 97, baseFill: 97, status: 'Critical', urgency: 'high', capacity: '1000L', capacityL: 1000, wasteType: 'Organic', areaType: 'Commercial', lastPickup: 'Yesterday, 10:00 PM', priorityScore: 98 },
-        { id: 'B07', code: 'B07', name: 'Prabhat Road Colony',    pos: [18.5135, 73.8315], lat: 18.5135, lng: 73.8315, fillPct: 86, baseFill: 86, status: 'Critical', urgency: 'high', capacity: '1200L', capacityL: 1200, wasteType: 'Organic', areaType: 'Residential', lastPickup: 'Yesterday, 08:30 PM', priorityScore: 89 },
-        { id: 'B09', code: 'B09', name: 'Westend Mall',           pos: [18.5623, 73.8078], lat: 18.5623, lng: 73.8078, fillPct: 91, baseFill: 91, status: 'Critical', urgency: 'high', capacity: '1500L', capacityL: 1500, wasteType: 'Dry',     areaType: 'Commercial', lastPickup: 'Yesterday, 06:15 PM', priorityScore: 93 },
-        { id: 'B12', code: 'B12', name: 'Pune University Road',   pos: [18.5367, 73.8242], lat: 18.5367, lng: 73.8242, fillPct: 84, baseFill: 84, status: 'Critical', urgency: 'high', capacity: '1000L', capacityL: 1000, wasteType: 'Mixed',   areaType: 'Commercial', lastPickup: 'Yesterday, 09:00 PM', priorityScore: 88 },
-      ]);
+      resolve(DEFAULT_PUNE_BINS.map(b => ({ ...b })));
     }, 1200);
   });
 }
@@ -282,5 +341,4 @@ window.fetchBinsFromDB = fetchBinsFromDB;
 window.generateOptimalRouteBackend = generateOptimalRouteBackend;
 window.updateAuthNavbarUI = updateAuthNavbarUI;
 window.updateBinStatusInDB = updateBinStatusInDB;
-
-
+window.DEFAULT_PUNE_BINS = DEFAULT_PUNE_BINS;

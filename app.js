@@ -929,12 +929,21 @@
           if (window.mountMunicipalDashboard) window.mountMunicipalDashboard();
           else if (window.mountReactMap) window.mountReactMap();
           setTimeout(() => {
-            if (window.mountMunicipalDashboard) window.mountMunicipalDashboard();
-            else if (window.mountReactMap) window.mountReactMap();
+            if (window.muniLeafletMap && typeof window.muniLeafletMap.invalidateSize === 'function') {
+              window.muniLeafletMap.invalidateSize();
+            } else if (window.mountMunicipalDashboard) {
+              window.mountMunicipalDashboard();
+            }
           }, 150);
       } else if (view === 'citizen') {
           if (window.mountCitizenMap) window.mountCitizenMap();
-          setTimeout(() => { if (window.mountCitizenMap) window.mountCitizenMap(); }, 150);
+          setTimeout(() => {
+            if (window.citizenLeafletMap && typeof window.citizenLeafletMap.invalidateSize === 'function') {
+              window.citizenLeafletMap.invalidateSize();
+            } else if (window.mountCitizenMap) {
+              window.mountCitizenMap();
+            }
+          }, 150);
           if (window.mountCitizenWallet) window.mountCitizenWallet();
       } else if (view === 'driver') {
           if (window.mountDriverDashboard) window.mountDriverDashboard();
