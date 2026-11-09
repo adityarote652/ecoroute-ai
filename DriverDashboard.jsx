@@ -1,4 +1,3 @@
-import 'leaflet/dist/leaflet.css';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
@@ -549,14 +548,9 @@ export function DriverDashboard() {
             </div>
           </div>
 
-          {/* Strict Loading State Guard: Only render MapContainer when loading is completely false */}
-          {loading ? (
-            <div className="flex h-[600px] sm:h-[70vh] items-center justify-center text-slate-400 bg-slate-900 rounded-3xl border border-slate-800">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-sm font-semibold text-slate-200">Loading Map Data...</span>
-              </div>
-            </div>
+          {/* Strict Loading State Guard: Only render MapContainer when loading is completely false and data is ready */}
+          {loading || !bins || bins.length === 0 ? (
+            <div className="flex h-[600px] w-full items-center justify-center bg-gray-50 border rounded-lg text-gray-500">Loading Map Data...</div>
           ) : (
             <MapContainer
               center={[18.6298, 73.7997]}

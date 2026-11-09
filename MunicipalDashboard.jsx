@@ -1,4 +1,3 @@
-import 'leaflet/dist/leaflet.css';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
@@ -249,14 +248,9 @@ export function MunicipalDashboard({ height = '600px', allowRoute = true, onMapR
         </div>
       )}
 
-      {/* Conditional Rendering: Render loading spinner while loading is true, mount MapContainer only when false */}
-      {loading ? (
-        <div className={`flex w-full ${height === '260px' ? 'h-[260px]' : 'h-[600px] sm:h-[70vh]'} items-center justify-center text-slate-400 bg-slate-900 rounded-2xl border border-slate-800`}>
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-sm font-semibold text-slate-200">Loading Map Data...</span>
-          </div>
-        </div>
+      {/* Strict conditional render: render placeholder if loading is true or if wardBins.length === 0 */}
+      {loading || !bins || bins.length === 0 || wardBins.length === 0 ? (
+        <div className="flex h-[600px] w-full items-center justify-center bg-gray-50 border rounded-lg text-gray-500">Loading Map Data...</div>
       ) : (
         <MapContainer
           center={[18.6298, 73.7997]}
