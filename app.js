@@ -325,7 +325,10 @@
     // Update KPI cards to show exact savings
     renderKPICards(distSaved, co2Saved);
     if (window.setMapShowRoute) window.setMapShowRoute(true);
-    renderMap();
+    const mapBody = document.getElementById('map-body');
+    if (!window.muniLeafletMap && !window.muniMap && (!mapBody || !mapBody._reactRoot)) {
+      renderMap();
+    }
   }
 
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1290,6 +1293,8 @@
               await window.generateRealRoute();
           } else if (window.generateOSRMRoute) {
               await window.generateOSRMRoute();
+          } else if (window.generateOptimalRoute) {
+              await window.generateOptimalRoute();
           } else {
               window.dispatchEvent(new CustomEvent('ecoroute:show'));
               if (window.generateOptimalRouteBackend) {
@@ -1299,7 +1304,9 @@
               }
           }
 
-          generateEcoRoute();
+          if (typeof generateEcoRoute === 'function') {
+            generateEcoRoute();
+          }
           if (window.setMapShowRoute) window.setMapShowRoute(true);
           showSimAlert("✅ Optimal TSP route calculated via OSRM (Depot → Critical Bins → Recycling Plant)!");
       } catch (err) {
