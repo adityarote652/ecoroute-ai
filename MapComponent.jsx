@@ -49,9 +49,9 @@ function makeDivIcon(color) {
   });
 }
 
-const redIcon    = makeDivIcon('#ef4444');   // Critical  >= 80%
-const orangeIcon = makeDivIcon('#f97316');   // Warning   50-79%
-const greenIcon  = makeDivIcon('#22c55e');   // Normal    < 50%
+export const redIcon    = makeDivIcon('#ef4444');   // Critical  >= 80%
+export const orangeIcon = makeDivIcon('#f97316');   // Warning   50-79%
+export const greenIcon  = makeDivIcon('#22c55e');   // Normal    < 50%
 
 if (typeof window !== 'undefined') {
   window.redIcon = redIcon;
@@ -113,16 +113,10 @@ export const plantIcon = makeFacilityIcon('#7e22ce', '#e9d5ff', 'fa-solid fa-rec
 let _muniMapInstance = null;
 let _citizenMapInstance = null;
 
-// Ensure leaflet recalculates dimensions immediately to avoid gray tiles
-export function MapResizer({ onReady, isLoading, isMuni = true }) {
+// Map reference binder (no invalidateSize calls to prevent React reconciliation crashes)
+export function MapResizer({ onReady, isMuni = true }) {
   const map = useMap();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [map]);
   useEffect(() => {
     if (onReady) onReady(map);
     if (isMuni) {
@@ -133,38 +127,7 @@ export function MapResizer({ onReady, isLoading, isMuni = true }) {
       _citizenMapInstance = map;
       window.citizenLeafletMap = map;
     }
-    map.invalidateSize();
-    const t1 = setTimeout(() => map.invalidateSize(), 100);
-    const t2 = setTimeout(() => map.invalidateSize(), 400);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
   }, [map, onReady, isMuni]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      const t = setTimeout(() => map.invalidateSize(), 80);
-      return () => clearTimeout(t);
-    }
-  }, [map, isLoading]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setTimeout(() => {
-        try { map.invalidateSize(); } catch (e) {}
-      }, 50);
-      setTimeout(() => {
-        try { map.invalidateSize(); } catch (e) {}
-      }, 250);
-    };
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('view:switched', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('view:switched', handleResize);
-    };
-  }, [map]);
 
   return null;
 }
@@ -674,7 +637,7 @@ export const mockHeatmapArray = mockHeatmapPoints;
 export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   // State Management: wardBins array stored in React state variable
   const [bins, setBins] = useState(wardBins);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showRoute, setShowRoute] = useState(false);
   const [routePositions, setRoutePositions] = useState([]);
   const routePath = routePositions;
@@ -842,7 +805,6 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
   useEffect(() => {
     let isMounted = true;
     async function loadBinsAsync() {
-      setIsLoading(true);
       try {
         let fetchedData = [];
         if (typeof fetchBinsFromDB === 'function') {
@@ -863,7 +825,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
         if (isMounted) setBins(wardBins);
       } finally {
         if (isMounted) {
-          setIsLoading(false);
+          setLoading(false);
         }
       }
     }
@@ -1081,47 +1043,29 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
           {heatmapToggleBtn}
         </div>
       )}
-      {/* Skeleton loader / "Loading Map Data..." overlay */}
-      {false && (
-        <div 
-          className="absolute inset-0 z-[1000] bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white transition-opacity duration-300 pointer-events-none"
-          style={{ zIndex: 1000 }}
-        >
-          <div className="flex items-center gap-3 bg-slate-950/95 border border-slate-700/80 px-5 py-3.5 rounded-2xl shadow-2xl">
-            <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-            <div className="flex flex-col text-left">
-              <span className="font-bold text-sm tracking-wide text-slate-100">Loading Map Data...</span>
-              <span className="text-[11px] text-slate-400">Fetching live coordinates &amp; fill levels</span>
-            </div>
-          </div>
-
-          {/* Skeleton pulse bar */}
-          <div className="w-64 max-w-[85%] mt-4 space-y-2">
-            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 animate-pulse w-full"></div>
-            </div>
-            <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-              <span>Connecting to IoT Telemetry DB...</span>
-              <span className="text-emerald-400 animate-pulse font-semibold">Syncing</span>
-            </div>
+      {/* Strict Loading State Guard: Only render MapContainer when loading is completely false */}
+      {loading ? (
+        <div className={`flex w-full ${height === '260px' ? 'h-[260px]' : 'h-[600px] sm:h-[70vh]'} items-center justify-center text-slate-400 bg-slate-900 rounded-2xl border border-slate-800`}>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm font-semibold text-slate-200">Loading Map Data...</span>
           </div>
         </div>
-      )}
+      ) : (
+        <MapContainer
+          center={[18.6298, 73.7997]}
+          zoom={12}
+          className={`w-full ${height === '260px' ? 'h-[260px]' : 'h-[600px] sm:h-[70vh]'}`}
+          style={{ height: '100%', minHeight: height, width: '100%' }}
+        >
+          <MapResizer onReady={onMapReady} isMuni={allowRoute} />
 
-      <MapContainer
-        center={[18.5204, 73.8567]}
-        zoom={11}
-        className={`w-full ${height === '260px' ? 'h-[260px]' : 'h-[600px] sm:h-[70vh]'}`}
-        style={{ height: '100%', minHeight: height, width: '100%' }}
-      >
-        <MapResizer onReady={onMapReady} isLoading={isLoading} isMuni={allowRoute} />
-
-        {/* Free OpenStreetMap tiles */}
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
-          maxZoom={19}
-        />
+          {/* Free OpenStreetMap tiles */}
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution="&copy; OpenStreetMap contributors"
+            maxZoom={19}
+          />
 
         {/* Predictive Heatmap Mode vs Standard Route & Bins */}
         {showHeatmap ? (
@@ -1342,6 +1286,7 @@ export function PuneMap({ height = '400px', allowRoute = true, onMapReady }) {
           </>
         )}
       </MapContainer>
+      )}
     </div>
   );
 }
@@ -1362,18 +1307,9 @@ export function mountMap() {
           _muniMapInstance = m;
           window.muniMap = m;
           window.muniLeafletMap = m;
-          setTimeout(() => m.invalidateSize(), 50);
-          setTimeout(() => m.invalidateSize(), 200);
-          setTimeout(() => m.invalidateSize(), 500);
-          setTimeout(() => m.invalidateSize(), 1000);
         }}
       />
     );
-    if (_muniMapInstance) {
-      setTimeout(() => _muniMapInstance.invalidateSize(), 50);
-      setTimeout(() => _muniMapInstance.invalidateSize(), 200);
-      setTimeout(() => _muniMapInstance.invalidateSize(), 500);
-    }
   }
   renderPriorityListUI(wardBins);
 }
@@ -1392,18 +1328,9 @@ export function mountCitizenMap() {
           _citizenMapInstance = m;
           window.citizenMap = m;
           window.citizenLeafletMap = m;
-          setTimeout(() => m.invalidateSize(), 50);
-          setTimeout(() => m.invalidateSize(), 200);
-          setTimeout(() => m.invalidateSize(), 500);
-          setTimeout(() => m.invalidateSize(), 1000);
         }}
       />
     );
-    if (_citizenMapInstance) {
-      setTimeout(() => _citizenMapInstance.invalidateSize(), 50);
-      setTimeout(() => _citizenMapInstance.invalidateSize(), 200);
-      setTimeout(() => _citizenMapInstance.invalidateSize(), 500);
-    }
   }
 }
 

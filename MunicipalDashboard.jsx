@@ -1,8 +1,11 @@
 import 'leaflet/dist/leaflet.css';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, Circle, useMap } from 'react-leaflet';
+import { createPortal } from 'react-dom';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, Circle } from 'react-leaflet';
 import L from 'leaflet';
+import { fetchBinsFromDB } from './firebase.js';
+import { appStore } from './AppContext.jsx';
 import {
   PuneMap,
   EcoRouteMap,
@@ -11,6 +14,9 @@ import {
   RECYCLING_PLANT,
   depotIcon,
   plantIcon,
+  redIcon,
+  orangeIcon,
+  greenIcon,
   fetchOSRMTrip,
   renderPriorityListUI,
   simulateTimeAdvance,
@@ -19,45 +25,419 @@ import {
   mountMap
 } from './MapComponent.jsx';
 
-/**
- * Small custom component for force recalculating Leaflet map dimensions.
- * Uses Leaflet's useMap() hook and a 500ms setTimeout to force recalculation
- * after the DOM and layout have fully painted.
- */
-export function MapResizer() {
-  const map = useMap();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [map]);
-
+// Reference holder (zero invalidateSize calls to prevent React concurrent reconciliation crashes)
+export function MapResizer({ onReady }) {
   return null;
 }
 
 /**
  * MunicipalDashboard Component
- * Features explicit Tailwind sizing (h-[600px] / h-[70vh]), MapResizer child,
- * and high-contrast municipal fleet routing display with ward bins, TSP route, and heatmap.
+ * 
+ * Strict Data Guard & Sizing:
+ * - Loading State Guard: const [loading, setLoading] = useState(true), flips to false after Firebase fetch resolves.
+ * - Conditional Rendering: renders spinner placeholder while loading; mounts <MapContainer> ONLY when loading is false.
+ * - Strictly Hardcoded Center: center={[18.6298, 73.7997]} (PCMC / Pune coordinates) - never dynamic variables.
+ * - Zero invalidateSize: eliminates unmount/crash during Firebase resolution and tab switching.
+ * - Explicit Tailwind sizing: h-[600px] sm:h-[70vh].
  */
-export function MunicipalDashboard({ height = '600px', allowRoute = true, onMapReady, ...props }) {
+export function MunicipalDashboard({ height = '600px', allowRoute = true, onMapReady }) {
+  const [bins, setBins] = useState(wardBins);
+  const [loading, setLoading] = useState(true);
+  const [showRoute, setShowRoute] = useState(false);
+  const [routePositions, setRoutePositions] = useState([]);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [portalTarget, setPortalTarget] = useState(() => (typeof document !== 'undefined' ? document.getElementById('heatmapToggleRoot') : null));
+  const markerRefs = useRef({});
+
+  // TSP multi-truck split paths
+  const routePath = routePositions;
+  const halfIndex = Math.ceil(routePath.length / 2);
+  const truck1Path = routePath.slice(0, halfIndex + 1);
+  const truck2Path = routePath.slice(halfIndex);
+
+  useEffect(() => {
+    const updateTarget = () => {
+      if (typeof document !== 'undefined') {
+        const el = document.getElementById('heatmapToggleRoot');
+        if (el) setPortalTarget(el);
+      }
+    };
+    updateTarget();
+    const timer = setTimeout(updateTarget, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.showHeatmap = showHeatmap;
+      window.setShowHeatmap = setShowHeatmap;
+      window.toggleHeatmap = () => setShowHeatmap((prev) => !prev);
+    }
+  }, [showHeatmap]);
+
+  // Loading State Guard: Asynchronously fetch Firebase data before mounting MapContainer
+  useEffect(() => {
+    let isMounted = true;
+    async function loadMunicipalData() {
+      try {
+        let fetchedData = [];
+        if (typeof fetchBinsFromDB === 'function') {
+          fetchedData = await fetchBinsFromDB();
+        } else if (typeof window !== 'undefined' && window.fetchBinsFromDB) {
+          fetchedData = await window.fetchBinsFromDB();
+        }
+
+        if (isMounted) {
+          if (fetchedData && fetchedData.length >= wardBins.length) {
+            setBins(fetchedData);
+          } else {
+            setBins(wardBins);
+          }
+        }
+      } catch (err) {
+        console.error('Municipal data load error, using unified wardBins:', err);
+        if (isMounted) setBins(wardBins);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadMunicipalData();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Compute reactive bin list with status labels, icons, fill text, and capacity/waste details
+  const binList = (bins && bins.length ? bins : wardBins).map((b) => {
+    const isCollected = b.collected === true || (b.status && b.status.toLowerCase().includes('normal') && (b.fillPct === 0 || b.fillPct < 50));
+    const fillPct = isCollected ? 0 : (typeof b.fillPct === 'number'
+      ? b.fillPct
+      : (typeof b.fillPercent === 'number' ? b.fillPercent : (b.baseFill || 60)));
+    const isCritical = !isCollected && fillPct >= 80;
+    const isWarning = !isCollected && fillPct >= 50 && fillPct < 80;
+    const label = isCollected ? 'Normal' : (isCritical ? 'Critical' : isWarning ? 'Warning' : 'Normal');
+    const icon = isCollected ? greenIcon : (isCritical ? redIcon : isWarning ? orangeIcon : greenIcon);
+    const fill = `${fillPct}% (${label})`;
+    return {
+      ...b,
+      fillPct,
+      fillPercent: fillPct,
+      status: label,
+      label,
+      icon,
+      fill,
+      capacity: b.capacity || (b.capacityL ? `${b.capacityL}L` : '1000L'),
+      wasteType: b.wasteType || 'Organic',
+      lastPickup: b.lastPickup || 'Today, 06:30 AM'
+    };
+  });
+
+  // Keep Priority Collection List in sync whenever binList changes
+  useEffect(() => {
+    if (allowRoute) {
+      renderPriorityListUI(binList);
+    }
+  }, [binList, allowRoute]);
+
+  // Subscribe to Global Context so driver collections update Municipal Map in real time
+  useEffect(() => {
+    const store = appStore || (typeof window !== 'undefined' ? window.appStore : null);
+    if (store && typeof store.subscribe === 'function') {
+      const unsubscribe = store.subscribe(() => {
+        const globalState = store.getState();
+        if (globalState.bins && globalState.bins.length) {
+          setBins([...globalState.bins]);
+        }
+      });
+      return unsubscribe;
+    }
+  }, []);
+
+  // Solve TSP & fetch OSRM trip
+  const generateRealRoute = async () => {
+    const criticalBins = binList.filter((b) => !b.collected && (b.fillPct >= 80 || b.label === 'Critical' || (b.status && b.status.toLowerCase().includes('critical'))));
+    const middleCoords = criticalBins.length > 0
+      ? criticalBins.map((b) => b.pos)
+      : [[18.5204, 73.8567], [18.5367, 73.8242], [18.5262, 73.8441]];
+
+    const waypoints = [TRUCK_DEPOT.pos, ...middleCoords, RECYCLING_PLANT.pos];
+
+    try {
+      const result = await fetchOSRMTrip(waypoints);
+      if (result && result.coords) {
+        setRoutePositions(result.coords);
+        setShowRoute(true);
+
+        if (typeof window !== 'undefined' && window.appStore) {
+          window.appStore.actions.setDispatchedRoute({
+            routePath: result.coords,
+            criticalBins: criticalBins.map(b => ({ ...b })),
+            routeStats: {
+              distanceKm: result.distanceKm,
+              durationMin: result.durationMin
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to generate real route in MunicipalDashboard:', e);
+    }
+  };
+
+  // Expose methods for UI buttons
+  useEffect(() => {
+    if (allowRoute) {
+      window.updateMapBins = (newBins) => setBins([...newBins]);
+      window.generateOSRMRoute = generateRealRoute;
+      window.setMapShowRoute = (val) => {
+        setShowRoute(val);
+        if (!val) setRoutePositions([]);
+      };
+      window.flyToBin = (lat, lng, zoom = 16, binId) => {
+        const map = window.muniMap || window.muniLeafletMap;
+        if (map && typeof map.flyTo === 'function') {
+          map.flyTo([lat, lng], zoom, { animate: true, duration: 1.5 });
+          if (binId && markerRefs.current) {
+            setTimeout(() => {
+              try {
+                const marker = markerRefs.current[binId];
+                if (marker && typeof marker.openPopup === 'function') marker.openPopup();
+              } catch(e) {}
+            }, 1200);
+          }
+        }
+      };
+
+      const handleShowRoute = () => generateRealRoute();
+      const handleClearRoute = () => {
+        setShowRoute(false);
+        setRoutePositions([]);
+      };
+      window.addEventListener('ecoroute:show', handleShowRoute);
+      window.addEventListener('ecoroute:clear', handleClearRoute);
+      return () => {
+        window.removeEventListener('ecoroute:show', handleShowRoute);
+        window.removeEventListener('ecoroute:clear', handleClearRoute);
+      };
+    }
+  }, [allowRoute, binList]);
+
+  const heatmapToggleBtn = allowRoute ? (
+    <button
+      id="btnToggleHeatmap"
+      type="button"
+      onClick={() => setShowHeatmap((prev) => !prev)}
+      className={`px-4 py-2.5 text-xs font-bold rounded-2xl shadow-md transition-all flex items-center gap-2 active:scale-95 cursor-pointer ${
+        showHeatmap
+          ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/30 ring-2 ring-rose-400'
+          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/30'
+      }`}
+      title="Toggle Predictive Waste Heatmap"
+    >
+      <i className={showHeatmap ? 'fa-solid fa-map' : 'fa-solid fa-fire'}></i>
+      <span>{showHeatmap ? 'Show Standard Route' : 'Show Predictive Heatmap'}</span>
+    </button>
+  ) : null;
+
   return (
-    <div className="w-full h-[600px] sm:h-[70vh] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl relative bg-slate-900">
-      <PuneMap height="100%" allowRoute={allowRoute} onMapReady={onMapReady} {...props} />
+    <div className={`relative w-full ${height === '260px' ? 'h-[260px]' : 'h-[600px] sm:h-[70vh]'} overflow-hidden rounded-2xl bg-slate-900`} style={{ height: height, minHeight: height }}>
+      {portalTarget && heatmapToggleBtn && createPortal(heatmapToggleBtn, portalTarget)}
+      {!portalTarget && allowRoute && (
+        <div className="absolute top-3 right-3 z-[500]">
+          {heatmapToggleBtn}
+        </div>
+      )}
+
+      {/* Conditional Rendering: Render loading spinner while loading is true, mount MapContainer only when false */}
+      {loading ? (
+        <div className={`flex w-full ${height === '260px' ? 'h-[260px]' : 'h-[600px] sm:h-[70vh]'} items-center justify-center text-slate-400 bg-slate-900 rounded-2xl border border-slate-800`}>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm font-semibold text-slate-200">Loading Map Data...</span>
+          </div>
+        </div>
+      ) : (
+        <MapContainer
+          center={[18.6298, 73.7997]}
+          zoom={12}
+          className={`w-full ${height === '260px' ? 'h-[260px]' : 'h-[600px] sm:h-[70vh]'}`}
+          style={{ height: '100%', minHeight: height, width: '100%' }}
+        >
+          {/* Free OpenStreetMap tiles */}
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution="&copy; OpenStreetMap contributors"
+            maxZoom={19}
+          />
+
+          {/* Predictive Heatmap Mode vs Standard Route & Bins */}
+          {showHeatmap ? (
+            mockHeatmapPoints.map((point, index) => (
+              <Circle
+                key={point.id || index}
+                center={point.pos || point.center || [point.lat, point.lng]}
+                radius={400}
+                color="red"
+                fillColor="#f03"
+                fillOpacity={0.4}
+                stroke={false}
+                pathOptions={{
+                  color: 'red',
+                  fillColor: '#f03',
+                  fillOpacity: 0.4,
+                  stroke: false,
+                }}
+              />
+            ))
+          ) : (
+            <>
+              {/* Multi-Truck Dispatch Simulation: TR-01 Route (Blue) & TR-02 Route (Purple) */}
+              {showRoute && routePath.length > 0 && (
+                <>
+                  <Polyline
+                    positions={truck1Path}
+                    color="#3b82f6"
+                    dashArray="6, 6"
+                    weight={5}
+                    pathOptions={{ color: '#3b82f6', dashArray: '6, 6', weight: 5 }}
+                  >
+                    <Tooltip sticky>TR-01 Route</Tooltip>
+                    <Popup>
+                      <div style={{ fontFamily: 'Inter, sans-serif', padding: '2px' }}>
+                        <strong style={{ color: '#3b82f6', fontSize: '13px' }}>TR-01 Route</strong>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>Assigned Fleet: Truck TR-01 (Capacity: 4.5T)</div>
+                      </div>
+                    </Popup>
+                  </Polyline>
+
+                  <Polyline
+                    positions={truck2Path}
+                    color="#a855f7"
+                    dashArray="6, 6"
+                    weight={5}
+                    pathOptions={{ color: '#a855f7', dashArray: '6, 6', weight: 5 }}
+                  >
+                    <Tooltip sticky>TR-02 Route</Tooltip>
+                    <Popup>
+                      <div style={{ fontFamily: 'Inter, sans-serif', padding: '2px' }}>
+                        <strong style={{ color: '#a855f7', fontSize: '13px' }}>TR-02 Route</strong>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>Assigned Fleet: Truck TR-02 (Capacity: 3.2T)</div>
+                      </div>
+                    </Popup>
+                  </Polyline>
+                </>
+              )}
+
+              {/* Permanent Facility 1: Truck Depot (Start) */}
+              <Marker position={TRUCK_DEPOT.pos} icon={depotIcon}>
+                <Popup className="eco-facility-popup">
+                  <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '220px', padding: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+                      <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a' }}>{TRUCK_DEPOT.name}</div>
+                      <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', backgroundColor: '#e0f2fe', color: '#0369a1' }}>Active</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#475569', marginBottom: '6px' }}>{TRUCK_DEPOT.role}</div>
+                    <div style={{ fontSize: '11px', color: '#0284c7', fontWeight: 600 }}>Zone: {TRUCK_DEPOT.zone}</div>
+                  </div>
+                </Popup>
+                <Tooltip direction="top" offset={[0, -18]} opacity={0.9}>
+                  <span className="font-semibold">{TRUCK_DEPOT.name}</span>
+                </Tooltip>
+              </Marker>
+
+              {/* Permanent Facility 2: Recycling Plant (End) */}
+              <Marker position={RECYCLING_PLANT.pos} icon={plantIcon}>
+                <Popup className="eco-facility-popup">
+                  <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '220px', padding: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '8px' }}>
+                      <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a' }}>{RECYCLING_PLANT.name}</div>
+                      <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', backgroundColor: '#f3e8ff', color: '#7e22ce' }}>Processing</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#475569', marginBottom: '6px' }}>{RECYCLING_PLANT.role}</div>
+                    <div style={{ fontSize: '11px', color: '#7e22ce', fontWeight: 600 }}>Zone: {RECYCLING_PLANT.zone}</div>
+                  </div>
+                </Popup>
+                <Tooltip direction="top" offset={[0, -18]} opacity={0.9}>
+                  <span className="font-semibold">{RECYCLING_PLANT.name}</span>
+                </Tooltip>
+              </Marker>
+
+              {/* Dynamic Bins Layer */}
+              {binList.map((bin) => {
+                const pos = bin.pos || (bin.lat && bin.lng ? [bin.lat, bin.lng] : null);
+                if (!pos) return null;
+                return (
+                  <Marker
+                    key={bin.id || bin.name}
+                    position={pos}
+                    icon={bin.icon || greenIcon}
+                    ref={(ref) => {
+                      if (ref) {
+                        markerRefs.current[bin.id] = ref;
+                        if (bin.code) markerRefs.current[bin.code] = ref;
+                      }
+                    }}
+                  >
+                    <Popup className="eco-bin-popup">
+                      <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '210px', padding: '2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', gap: '8px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '12px', backgroundColor: '#f1f5f9', color: '#475569' }}>
+                            {bin.id}
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            backgroundColor: bin.label === 'Critical' ? '#fee2e2' : bin.label === 'Warning' ? '#ffedd5' : '#dcfce7',
+                            color: bin.label === 'Critical' ? '#b91c1c' : bin.label === 'Warning' ? '#c2410c' : '#15803d'
+                          }}>
+                            {bin.label}
+                          </span>
+                        </div>
+                        <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a', marginBottom: '4px' }}>
+                          {bin.name}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 700, color: '#0f172a' }}>{bin.fillPct}% Fill Level</span>
+                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>• {bin.capacity}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px solid #f1f5f9', paddingTop: '6px' }}>
+                          <div><strong style={{ color: '#475569' }}>Waste Type:</strong> {bin.wasteType}</div>
+                          <div><strong style={{ color: '#475569' }}>Last Pickup:</strong> {bin.lastPickup}</div>
+                        </div>
+                      </div>
+                    </Popup>
+                    <Tooltip direction="top" offset={[0, -20]} opacity={0.9}>
+                      <span className="font-semibold">{bin.name}</span>: {bin.fill || `${bin.fillPct}%`}
+                    </Tooltip>
+                  </Marker>
+                );
+              })}
+            </>
+          )}
+        </MapContainer>
+      )}
     </div>
   );
 }
 
 // Global Mount Helper
 export function mountMunicipalDashboard() {
-  mountMap();
+  const rootEl = document.getElementById('map-body');
+  if (rootEl) {
+    if (!rootEl._reactRoot) {
+      rootEl._reactRoot = createRoot(rootEl);
+    }
+    rootEl._reactRoot.render(<MunicipalDashboard height="600px" allowRoute={true} />);
+  }
 }
 
 if (typeof window !== 'undefined') {
   window.MunicipalDashboard = MunicipalDashboard;
   window.mountMunicipalDashboard = mountMunicipalDashboard;
+  window.mountReactMap = mountMunicipalDashboard;
 }
 
 export {

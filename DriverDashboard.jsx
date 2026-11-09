@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useApp, AppProvider, appStore } from './AppContext.jsx';
-import { db, updateBinStatusInDB } from './firebase.js';
+import { db, updateBinStatusInDB, fetchBinsFromDB } from './firebase.js';
 import { doc, setDoc } from 'firebase/firestore';
 
 let _driverAudioCtx = null; function getDriverAudioCtx() { try { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; if (!_driverAudioCtx) _driverAudioCtx = new C(); if (_driverAudioCtx.state === 'suspended') _driverAudioCtx.resume().catch(() => {}); return _driverAudioCtx; } catch(e) { return null; } }
@@ -131,17 +131,8 @@ function createPlantMarkerIcon() {
   });
 }
 
-// ── Map Resizer Fix Component ───────────────────────────────────────────────
+// ── Map Resizer (zero invalidateSize calls to avoid unmounting/crashes) ─────
 export function MapResizer() {
-  const map = useMap();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [map]);
-
   return null;
 }
 
@@ -150,31 +141,14 @@ function MapController({ center, zoom, bounds }) {
   const map = useMap();
 
   useEffect(() => {
-    map.invalidateSize();
-    const t1 = setTimeout(() => map.invalidateSize(), 150);
-    const t2 = setTimeout(() => { map.invalidateSize(); if (bounds && bounds.length >= 2) try { map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 }); } catch(e){} }, 500); const t3 = setTimeout(() => { map.invalidateSize(); }, 1200);
-
-    const handleResize = () => {
-      if (map) map.invalidateSize();
-    };
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('view:switched', handleResize);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('view:switched', handleResize);
-    };
-  }, [map]);
-
-  useEffect(() => {
     if (bounds && bounds.length >= 2) {
       try {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
       } catch (e) {}
     } else if (center) {
-      map.setView(center, zoom || 15);
+      try {
+        map.setView(center, zoom || 15);
+      } catch (e) {}
     }
   }, [map, center, zoom, bounds]);
 
@@ -212,7 +186,28 @@ export function DriverDashboard() {
   const [isUpdatingDb, setIsUpdatingDb] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(26);
   const [currentTime, setCurrentTime] = useState('');
+  const [loading, setLoading] = useState(true);
   const mapRef = useRef(null);
+
+  // Loading State Guard: Asynchronously fetch/sync Firebase data before mounting MapContainer
+  useEffect(() => {
+    let isMounted = true;
+    async function initDriverData() {
+      try {
+        if (typeof fetchBinsFromDB === 'function') {
+          await fetchBinsFromDB();
+        }
+      } catch (err) {
+        console.warn('Driver dashboard data fetch warning:', err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+    initDriverData();
+    return () => { isMounted = false; };
+  }, []);
 
   // Live Tablet Clock
   useEffect(() => {
@@ -554,20 +549,29 @@ export function DriverDashboard() {
             </div>
           </div>
 
-          <MapContainer
-            center={truckPos}
-            zoom={15}
-            className="w-full h-[600px] sm:h-[70vh]"
-            style={{ width: '100%', height: '600px', minHeight: '600px' }}
-            zoomControl={false}
-            ref={mapRef}
-          >
-            <MapResizer />
-            <MapController bounds={mapBounds} />
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+          {/* Strict Loading State Guard: Only render MapContainer when loading is completely false */}
+          {loading ? (
+            <div className="flex h-[600px] sm:h-[70vh] items-center justify-center text-slate-400 bg-slate-900 rounded-3xl border border-slate-800">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-sm font-semibold text-slate-200">Loading Map Data...</span>
+              </div>
+            </div>
+          ) : (
+            <MapContainer
+              center={[18.6298, 73.7997]}
+              zoom={15}
+              className="w-full h-[600px] sm:h-[70vh]"
+              style={{ width: '100%', height: '600px', minHeight: '600px' }}
+              zoomControl={false}
+              ref={mapRef}
+            >
+              <MapResizer />
+              <MapController bounds={mapBounds} />
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
 
             {/* Truck Live Location Marker */}
             <Marker position={truckPos} icon={createTruckMarkerIcon()}>
@@ -702,6 +706,7 @@ export function DriverDashboard() {
               );
             })()}
           </MapContainer>
+          )}
         </div>
       </div>
 
